@@ -3,7 +3,7 @@
 :root {
   --background: #fafaf9;
   --foreground: #1c1917;
-  --font-ibm-arabic: 'IBM Plex Sans Arabic', sans-serif;
+  --font-ibm-arabic: "IBM Plex Sans Arabic", sans-serif;
 }
 
 @theme inline {
@@ -32,5 +32,85 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Crown bounce animation for leaderboard */
+.animate-bounce-slow {
+  animation: bounceSlow 2s ease-in-out infinite;
+}
+
+@keyframes bounceSlow {
+  0%,
+  100% {
+    transform: translateY(0) translateX(-50%);
+  }
+  50% {
+    transform: translateY(-6px) translateX(-50%);
+  }
+}
+
+/* Shining Champion Animations */
+.animate-glow {
+  animation: glowPulse 2.5s infinite alternate;
+}
+@keyframes glowPulse {
+  0% {
+    box-shadow:
+      0 0 10px rgba(251, 191, 36, 0.4),
+      0 0 20px rgba(251, 191, 36, 0.2);
+  }
+  100% {
+    box-shadow:
+      0 0 25px rgba(251, 191, 36, 0.9),
+      0 0 50px rgba(251, 191, 36, 0.7),
+      inset 0 0 30px rgba(255, 255, 255, 0.8);
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerSweep 3s infinite linear;
+}
+@keyframes shimmerSweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-float {
+  animation: floatAnim 4s ease-in-out infinite;
+}
+@keyframes floatAnim {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.03);
+  }
+}
+
+.animate-sparkle {
+  animation: sparkleAnim 2s infinite ease-in-out alternate;
+}
+@keyframes sparkleAnim {
+  0% {
+    opacity: 0.3;
+    transform: scale(0.8) rotate(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.2) rotate(45deg);
+    filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.8));
   }
 }

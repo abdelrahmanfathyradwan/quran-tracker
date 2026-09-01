@@ -15,6 +15,7 @@ class StudentRepository extends BaseRepository<Student> {
     const student: Student = {
       id: generateId(),
       name: data.name,
+      grade: data.grade,
       startDate: data.startDate,
       currentMemorization: data.currentMemorization,
       currentPosition: data.currentPosition,

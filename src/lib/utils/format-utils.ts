@@ -71,9 +71,10 @@ export function getRatingColor(rating: SessionRating): string {
  */
 export function getRecitationStatusLabel(status: RecitationStatus): string {
   const labels: Record<RecitationStatus, string> = {
-    not_piked: 'لم يسمع',
-    completed: 'تم الإتقان',
-    needs_retry: 'يحتاج إعادة',
+    excellent: 'ممتاز',
+    very_good: 'جيد جدًا',
+    good: 'جيد',
+    retry: 'إعادة',
   };
   return labels[status];
 }
@@ -83,9 +84,10 @@ export function getRecitationStatusLabel(status: RecitationStatus): string {
  */
 export function getRecitationStatusColor(status: RecitationStatus): string {
   const colors: Record<RecitationStatus, string> = {
-    not_piked: 'text-gray-500 bg-gray-50',
-    completed: 'text-emerald-700 bg-emerald-50',
-    needs_retry: 'text-amber-700 bg-amber-50',
+    excellent: 'text-emerald-700 bg-emerald-50',
+    very_good: 'text-blue-700 bg-blue-50',
+    good: 'text-amber-600 bg-amber-50',
+    retry: 'text-red-700 bg-red-50',
   };
   return colors[status];
 }

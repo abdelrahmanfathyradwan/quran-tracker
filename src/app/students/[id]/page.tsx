@@ -10,7 +10,7 @@ import { sessionRepository } from '@/lib/repositories/session-repository';
 import { studentService } from '@/lib/services';
 import { PageHeader, StatusBadge, ProgressBar, EmptyState } from '@/components/shared';
 import { formatArabicDateWithDay } from '@/lib/utils/date-utils';
-import { Student } from '@/lib/types/student';
+import { Student, GRADE_LABELS } from '@/lib/types/student';
 import { Plan } from '@/lib/types/plan';
 import { Session } from '@/lib/types/session';
 
@@ -58,7 +58,14 @@ export default function StudentProfilePage() {
       <div className="bg-white border border-stone-200 rounded-xl p-5 md:p-6 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <h1 className="text-xl font-bold text-stone-900">{student.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold text-stone-900">{student.name}</h1>
+              {student.grade && (
+                <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
+                  {GRADE_LABELS[student.grade]}
+                </span>
+              )}
+            </div>
             <p className="text-stone-500 text-sm">تاريخ بداية المتابعة: {student.startDate}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">

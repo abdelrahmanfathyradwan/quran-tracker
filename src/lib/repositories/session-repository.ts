@@ -40,9 +40,18 @@ class SessionRepository extends BaseRepository<Session> {
       distantRevision: data.distantRevision,
       overallRating: data.overallRating,
       notes: data.notes,
+      durationSeconds: data.durationSeconds,
       completed: true,
       completedAt: new Date().toISOString(),
     });
+  }
+
+  startSession(id: string): Session | undefined {
+    const session = this.getById(id);
+    if (session && !session.startedAt) {
+      return this.update(id, { startedAt: new Date().toISOString() });
+    }
+    return session;
   }
 
   updateSessionContent(

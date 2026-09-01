@@ -6,7 +6,7 @@ import { Plus, Search, Trash2, Edit2, User } from 'lucide-react';
 import { useStudents } from '@/lib/hooks';
 import { studentService } from '@/lib/services';
 import { PageHeader, StatusBadge, EmptyState, ConfirmDialog } from '@/components/shared';
-import { Student } from '@/lib/types/student';
+import { Student, SchoolGrade, GRADE_LABELS } from '@/lib/types/student';
 
 export default function StudentsPage() {
   const { students, addStudent, deleteStudent, searchStudents, refresh } = useStudents();
@@ -17,6 +17,7 @@ export default function StudentsPage() {
   
   // Form State
   const [name, setName] = useState('');
+  const [grade, setGrade] = useState<SchoolGrade | ''>('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [currentMemorization, setCurrentMemorization] = useState('');
   const [currentPosition, setCurrentPosition] = useState('');
@@ -32,6 +33,7 @@ export default function StudentsPage() {
 
     addStudent({
       name,
+      grade: grade || undefined,
       startDate,
       currentMemorization,
       currentPosition,
@@ -40,6 +42,7 @@ export default function StudentsPage() {
 
     // Reset Form
     setName('');
+    setGrade('');
     setStartDate(new Date().toISOString().split('T')[0]);
     setCurrentMemorization('');
     setCurrentPosition('');
@@ -98,6 +101,7 @@ export default function StudentsPage() {
               <thead>
                 <tr className="bg-stone-50 border-b border-stone-100 text-xs font-semibold text-stone-500">
                   <th className="px-6 py-4">اسم الطالب</th>
+                  <th className="px-6 py-4">الصف الدراسي</th>
                   <th className="px-6 py-4">مقدار المحفوظ</th>
                   <th className="px-6 py-4">الموضع الحالي</th>
                   <th className="px-6 py-4">تاريخ المتابعة</th>
@@ -114,6 +118,13 @@ export default function StudentsPage() {
                         <Link href={`/students/${student.id}`} className="hover:text-emerald-600 transition-colors">
                           {student.name}
                         </Link>
+                      </td>
+                      <td className="px-6 py-4 text-xs">
+                        {student.grade ? (
+                          <span className="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-medium">
+                            {GRADE_LABELS[student.grade]}
+                          </span>
+                        ) : '—'}
                       </td>
                       <td className="px-6 py-4">{student.currentMemorization || '—'}</td>
                       <td className="px-6 py-4 text-stone-600">{student.currentPosition || '—'}</td>
@@ -162,6 +173,20 @@ export default function StudentsPage() {
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3.5 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">الصف الدراسي</label>
+                <select
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value as SchoolGrade | '')}
+                  className="w-full px-3.5 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                >
+                  <option value="">— اختر الصف الدراسي —</option>
+                  {(Object.keys(GRADE_LABELS) as SchoolGrade[]).map((g) => (
+                    <option key={g} value={g}>{GRADE_LABELS[g]}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

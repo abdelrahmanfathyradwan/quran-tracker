@@ -59,7 +59,7 @@ class PlanRepository extends BaseRepository<Plan> {
     // Create empty sessions for each recitation date
     const emptyItem: RecitationItem = {
       content: '',
-      status: 'not_piked',
+      status: 'excellent',
       mistakes: 0,
       notes: '',
     };

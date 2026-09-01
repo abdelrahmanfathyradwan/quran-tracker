@@ -11,6 +11,8 @@ import {
   Settings,
   X,
   BookOpenCheck,
+  History,
+  Trophy,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,6 +26,8 @@ const navItems = [
   { href: '/plans', label: 'الخطط', icon: CalendarDays },
   { href: '/recitation', label: 'التسميع', icon: BookOpen },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
+  { href: '/history', label: 'السجل', icon: History },
+  { href: '/leaderboard', label: 'فارس اليوم', icon: Trophy },
   { href: '/settings', label: 'الإعدادات', icon: Settings },
 ];
 

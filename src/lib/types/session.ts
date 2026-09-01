@@ -1,9 +1,14 @@
-export type RecitationStatus = 'not_piked' | 'completed' | 'needs_retry';
+export type RecitationStatus = "excellent" | "very_good" | "good" | "retry";
 
-export type SessionRating = 'excellent' | 'very_good' | 'good' | 'needs_attention';
+export type SessionRating =
+  | "excellent"
+  | "very_good"
+  | "good"
+  | "needs_attention";
 
 export interface RecitationItem {
   content: string; // e.g., "سورة النساء الآيات 35–45"
+  amount?: string; // المقدار الفعلي الذي تم تسميعه — e.g., "صفحة ونصف" أو "5 آيات"
   status: RecitationStatus;
   mistakes: number;
   notes?: string;
@@ -25,6 +30,8 @@ export interface Session {
 
   completed: boolean;
   completedAt?: string;
+  startedAt?: string; // ISO timestamp — when the teacher started the session
+  durationSeconds?: number; // total elapsed seconds for the session
 }
 
 export interface SessionFormData {
@@ -33,17 +40,19 @@ export interface SessionFormData {
   distantRevision: RecitationItem;
   overallRating?: SessionRating;
   notes?: string;
+  durationSeconds?: number;
 }
 
 export const RATING_LABELS: Record<SessionRating, string> = {
-  excellent: 'ممتاز',
-  very_good: 'جيد جدًا',
-  good: 'جيد',
-  needs_attention: 'يحتاج متابعة',
+  excellent: "ممتاز",
+  very_good: "جيد جدًا",
+  good: "جيد",
+  needs_attention: "يحتاج متابعة",
 };
 
 export const STATUS_LABELS: Record<RecitationStatus, string> = {
-  not_piked: 'لم يسمع',
-  completed: 'تم الإتقان',
-  needs_retry: 'يحتاج إعادة',
+  excellent: "ممتاز",
+  very_good: "جيد جدًا",
+  good: "جيد",
+  retry: "إعادة",
 };

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Check, Plus, Minus, ArrowLeft } from 'lucide-react';
+import { ArrowRight, Check, Plus, Minus, ArrowLeft, Timer } from 'lucide-react';
 import { sessionRepository } from '@/lib/repositories/session-repository';
 import { studentRepository } from '@/lib/repositories/student-repository';
 import { formatArabicDateWithDay } from '@/lib/utils/date-utils';
@@ -21,20 +21,39 @@ export default function RecitationSessionPage() {
   const [nextSessionId, setNextSessionId] = useState<string | null>(null);
 
   // Form states matching model components
-  const [newStatus, setNewStatus] = useState<RecitationStatus>('not_piked');
+  const [newStatus, setNewStatus] = useState<RecitationStatus>('excellent');
   const [newMistakes, setNewMistakes] = useState(0);
   const [newNotes, setNewNotes] = useState('');
+  const [newAmount, setNewAmount] = useState('');
 
-  const [recentStatus, setRecentStatus] = useState<RecitationStatus>('not_piked');
+  const [recentStatus, setRecentStatus] = useState<RecitationStatus>('excellent');
   const [recentMistakes, setRecentMistakes] = useState(0);
   const [recentNotes, setRecentNotes] = useState('');
+  const [recentAmount, setRecentAmount] = useState('');
 
-  const [distantStatus, setDistantStatus] = useState<RecitationStatus>('not_piked');
+  const [distantStatus, setDistantStatus] = useState<RecitationStatus>('excellent');
   const [distantMistakes, setDistantMistakes] = useState(0);
   const [distantNotes, setDistantNotes] = useState('');
+  const [distantAmount, setDistantAmount] = useState('');
 
   const [rating, setRating] = useState<SessionRating>('very_good');
   const [sessionNotes, setSessionNotes] = useState('');
+
+  // Timer state
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number>(0);
+
+  const formatDuration = useCallback((totalSeconds: number): string => {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }, []);
 
   useEffect(() => {
     const s = sessionRepository.getById(sessionId);
@@ -53,17 +72,38 @@ export default function RecitationSessionPage() {
     setNewStatus(s.newMemorization.status);
     setNewMistakes(s.newMemorization.mistakes || 0);
     setNewNotes(s.newMemorization.notes || '');
+    setNewAmount(s.newMemorization.amount || '');
 
     setRecentStatus(s.recentRevision.status);
     setRecentMistakes(s.recentRevision.mistakes || 0);
     setRecentNotes(s.recentRevision.notes || '');
+    setRecentAmount(s.recentRevision.amount || '');
 
     setDistantStatus(s.distantRevision.status);
     setDistantMistakes(s.distantRevision.mistakes || 0);
     setDistantNotes(s.distantRevision.notes || '');
+    setDistantAmount(s.distantRevision.amount || '');
 
     setRating(s.overallRating || 'very_good');
     setSessionNotes(s.notes || '');
+
+    // Timer: if session already completed, show saved duration
+    if (s.completed && s.durationSeconds) {
+      setElapsedSeconds(s.durationSeconds);
+      setTimerRunning(false);
+    } else if (!s.completed) {
+      // Start or resume timer
+      sessionRepository.startSession(sessionId);
+      const refreshed = sessionRepository.getById(sessionId);
+      if (refreshed?.startedAt) {
+        const startMs = new Date(refreshed.startedAt).getTime();
+        startTimeRef.current = startMs;
+        const nowMs = Date.now();
+        const initialElapsed = Math.floor((nowMs - startMs) / 1000);
+        setElapsedSeconds(initialElapsed);
+        setTimerRunning(true);
+      }
+    }
 
     // Check for next student today
     const todaySessions = sessionRepository.getTodaySessions();
@@ -75,31 +115,52 @@ export default function RecitationSessionPage() {
     }
   }, [sessionId, router]);
 
+  // Timer tick effect
+  useEffect(() => {
+    if (timerRunning && startTimeRef.current > 0) {
+      timerRef.current = setInterval(() => {
+        const nowMs = Date.now();
+        setElapsedSeconds(Math.floor((nowMs - startTimeRef.current) / 1000));
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [timerRunning]);
+
   if (!session) return <div className="py-8 text-center">جاري التحميل...</div>;
 
   const handleSave = () => {
     sessionRepository.completeSession(sessionId, {
       newMemorization: {
         content: session.newMemorization.content,
+        amount: newAmount,
         status: newStatus,
         mistakes: newMistakes,
         notes: newNotes,
       },
       recentRevision: {
         content: session.recentRevision.content,
+        amount: recentAmount,
         status: recentStatus,
         mistakes: recentMistakes,
         notes: recentNotes,
       },
       distantRevision: {
         content: session.distantRevision.content,
+        amount: distantAmount,
         status: distantStatus,
         mistakes: distantMistakes,
         notes: distantNotes,
       },
       overallRating: rating,
       notes: sessionNotes,
+      durationSeconds: elapsedSeconds,
     });
+
+    // Stop timer
+    setTimerRunning(false);
+    if (timerRef.current) clearInterval(timerRef.current);
 
     showToast('تم حفظ جلسة التسميع بنجاح', 'success');
 
@@ -121,10 +182,28 @@ export default function RecitationSessionPage() {
 
       {/* Header Info */}
       <div className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
-        <h1 className="text-xl font-bold text-stone-900">{studentName}</h1>
-        <p className="text-stone-500 text-xs mt-1">
-          جلسة {formatArabicDateWithDay(session.date)}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-stone-900">{studentName}</h1>
+            <p className="text-stone-500 text-xs mt-1">
+              جلسة {formatArabicDateWithDay(session.date)}
+            </p>
+          </div>
+          {/* Timer Display */}
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${
+            session.completed
+              ? 'bg-stone-50 border-stone-200 text-stone-500'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          }`}>
+            <Timer className="w-4 h-4" />
+            <span className="font-mono font-bold text-base tracking-wider" dir="ltr">
+              {formatDuration(elapsedSeconds)}
+            </span>
+            {timerRunning && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 1. New Memorization */}
@@ -136,8 +215,18 @@ export default function RecitationSessionPage() {
 
         <div className="space-y-3">
           <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">المقدار الذي تم تسميعه</label>
+            <input
+              type="text"
+              value={newAmount}
+              onChange={(e) => setNewAmount(e.target.value)}
+              placeholder="مثال: صفحة ونصف أو 5 آيات"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
             <label className="block text-xs font-semibold text-stone-600 mb-1.5">النتيجة</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {(Object.keys(STATUS_LABELS) as RecitationStatus[]).map((st) => (
                 <button
                   key={st}
@@ -198,8 +287,18 @@ export default function RecitationSessionPage() {
 
         <div className="space-y-3">
           <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">المقدار الذي تم تسميعه</label>
+            <input
+              type="text"
+              value={recentAmount}
+              onChange={(e) => setRecentAmount(e.target.value)}
+              placeholder="مثال: جزء كامل أو 10 آيات"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
             <label className="block text-xs font-semibold text-stone-600 mb-1.5">النتيجة</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {(Object.keys(STATUS_LABELS) as RecitationStatus[]).map((st) => (
                 <button
                   key={st}
@@ -260,8 +359,18 @@ export default function RecitationSessionPage() {
 
         <div className="space-y-3">
           <div>
+            <label className="block text-xs font-semibold text-stone-600 mb-1">المقدار الذي تم تسميعه</label>
+            <input
+              type="text"
+              value={distantAmount}
+              onChange={(e) => setDistantAmount(e.target.value)}
+              placeholder="مثال: 3 صفحات أو سورة كاملة"
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
             <label className="block text-xs font-semibold text-stone-600 mb-1.5">النتيجة</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {(Object.keys(STATUS_LABELS) as RecitationStatus[]).map((st) => (
                 <button
                   key={st}

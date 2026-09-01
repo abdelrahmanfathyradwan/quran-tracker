@@ -1,6 +1,7 @@
 import { Student } from './types/student';
 import { Plan } from './types/plan';
 import { Session, RecitationItem } from './types/session';
+import { SchoolGrade } from './types/student';
 import { studentRepository } from './repositories/student-repository';
 import { planRepository } from './repositories/plan-repository';
 import { sessionRepository } from './repositories/session-repository';
@@ -11,10 +12,11 @@ function generateId(): string {
 
 function createRecitationItem(
   content: string,
-  status: 'not_piked' | 'completed' | 'needs_retry' = 'not_piked',
-  mistakes = 0
+  status: 'excellent' | 'very_good' | 'good' | 'retry' = 'excellent',
+  mistakes = 0,
+  amount = ''
 ): RecitationItem {
-  return { content, status, mistakes, notes: '' };
+  return { content, amount, status, mistakes, notes: '' };
 }
 
 export function loadSeedData(): void {
@@ -29,6 +31,7 @@ export function loadSeedData(): void {
     {
       id: 'student_1',
       name: 'خالد محمد فتحي',
+      grade: 'grade_9' as SchoolGrade,
       startDate: '2026-06-01',
       currentMemorization: '5 أجزاء و 12 صفحة',
       currentPosition: 'سورة النساء — الآية 35',
@@ -40,6 +43,7 @@ export function loadSeedData(): void {
     {
       id: 'student_2',
       name: 'أحمد عبدالله السيد',
+      grade: 'grade_7' as SchoolGrade,
       startDate: '2026-05-15',
       currentMemorization: '3 أجزاء',
       currentPosition: 'سورة آل عمران — الآية 120',
@@ -51,6 +55,7 @@ export function loadSeedData(): void {
     {
       id: 'student_3',
       name: 'يوسف إبراهيم حسن',
+      grade: 'grade_11' as SchoolGrade,
       startDate: '2026-07-01',
       currentMemorization: '8 أجزاء و 5 صفحات',
       currentPosition: 'سورة الأنعام — الآية 90',
@@ -62,6 +67,7 @@ export function loadSeedData(): void {
     {
       id: 'student_4',
       name: 'عمر حسين عبدالرحمن',
+      grade: 'grade_5' as SchoolGrade,
       startDate: '2026-08-01',
       currentMemorization: 'جزء واحد و 8 صفحات',
       currentPosition: 'سورة البقرة — الآية 200',
@@ -73,6 +79,7 @@ export function loadSeedData(): void {
     {
       id: 'student_5',
       name: 'محمد علي الشريف',
+      grade: 'university' as SchoolGrade,
       startDate: '2026-04-01',
       currentMemorization: '10 أجزاء',
       currentPosition: 'سورة هود — الآية 50',
@@ -84,6 +91,7 @@ export function loadSeedData(): void {
     {
       id: 'student_6',
       name: 'عبدالرحمن سعيد',
+      grade: 'grade_12' as SchoolGrade,
       startDate: '2026-03-15',
       currentMemorization: '12 جزء',
       currentPosition: 'سورة يوسف — الآية 80',
@@ -95,6 +103,7 @@ export function loadSeedData(): void {
     {
       id: 'student_7',
       name: 'إسماعيل فاروق',
+      grade: 'grade_3' as SchoolGrade,
       startDate: '2026-08-20',
       currentMemorization: 'صفحتان',
       currentPosition: 'سورة الفاتحة + سورة البقرة — الآية 10',
@@ -179,18 +188,21 @@ export function loadSeedData(): void {
       sessionNumber: i + 1,
       newMemorization: createRecitationItem(
         `سورة النساء الآيات ${35 + i * 10}–${44 + i * 10}`,
-        isPastDate ? 'completed' : 'not_piked',
-        isPastDate ? Math.floor(Math.random() * 3) : 0
+        isPastDate ? 'excellent' : 'excellent',
+        isPastDate ? Math.floor(Math.random() * 3) : 0,
+        isPastDate ? 'صفحة ونصف' : ''
       ),
       recentRevision: createRecitationItem(
         `سورة النساء الآيات ${25 + i * 10}–${34 + i * 10}`,
-        isPastDate ? 'completed' : 'not_piked',
-        isPastDate ? Math.floor(Math.random() * 2) : 0
+        isPastDate ? 'excellent' : 'excellent',
+        isPastDate ? Math.floor(Math.random() * 2) : 0,
+        isPastDate ? '3 صفحات' : ''
       ),
       distantRevision: createRecitationItem(
         i % 2 === 0 ? 'سورة الملك كاملة' : 'سورة الرحمن كاملة',
-        isPastDate ? 'completed' : 'not_piked',
-        isPastDate ? Math.floor(Math.random() * 2) : 0
+        isPastDate ? 'excellent' : 'excellent',
+        isPastDate ? Math.floor(Math.random() * 2) : 0,
+        isPastDate ? 'سورة كاملة' : ''
       ),
       overallRating: isPastDate ? 'excellent' : undefined,
       completed: isPastDate,
@@ -211,16 +223,16 @@ export function loadSeedData(): void {
       sessionNumber: i + 1,
       newMemorization: createRecitationItem(
         `سورة آل عمران الآيات ${120 + i * 8}–${127 + i * 8}`,
-        isPastDate ? (i % 3 === 0 ? 'needs_retry' : 'completed') : 'not_piked',
+        isPastDate ? (i % 3 === 0 ? 'retry' : 'very_good') : 'excellent',
         isPastDate ? Math.floor(Math.random() * 5) : 0
       ),
       recentRevision: createRecitationItem(
         `سورة آل عمران الآيات ${112 + i * 8}–${119 + i * 8}`,
-        isPastDate ? 'completed' : 'not_piked'
+        isPastDate ? 'very_good' : 'excellent'
       ),
       distantRevision: createRecitationItem(
         'سورة البقرة الآيات 255–265',
-        isPastDate ? 'completed' : 'not_piked'
+        isPastDate ? 'good' : 'excellent'
       ),
       overallRating: isPastDate ? (i % 3 === 0 ? 'good' : 'very_good') : undefined,
       completed: isPastDate,
@@ -242,16 +254,16 @@ export function loadSeedData(): void {
       sessionNumber: i + 1,
       newMemorization: createRecitationItem(
         `سورة الأنعام الآيات ${90 + i * 7}–${96 + i * 7}`,
-        didAttend ? 'completed' : 'not_piked',
+        didAttend ? 'good' : 'excellent',
         didAttend ? Math.floor(Math.random() * 6) : 0
       ),
       recentRevision: createRecitationItem(
         `سورة الأنعام الآيات ${83 + i * 7}–${89 + i * 7}`,
-        didAttend ? 'completed' : 'not_piked'
+        didAttend ? 'good' : 'excellent'
       ),
       distantRevision: createRecitationItem(
         'سورة المائدة الآيات 1–20',
-        didAttend ? 'needs_retry' : 'not_piked'
+        didAttend ? 'retry' : 'excellent'
       ),
       overallRating: didAttend ? 'needs_attention' : undefined,
       completed: didAttend,
@@ -274,16 +286,16 @@ export function loadSeedData(): void {
       sessionNumber: i + 1,
       newMemorization: createRecitationItem(
         `سورة هود الآيات ${50 + i * 5}–${54 + i * 5}`,
-        didAttend ? 'needs_retry' : 'not_piked',
+        didAttend ? 'retry' : 'excellent',
         didAttend ? Math.floor(Math.random() * 8) : 0
       ),
       recentRevision: createRecitationItem(
         `سورة هود الآيات ${45 + i * 5}–${49 + i * 5}`,
-        didAttend ? 'completed' : 'not_piked'
+        didAttend ? 'good' : 'excellent'
       ),
       distantRevision: createRecitationItem(
         'سورة يونس الآيات 1–15',
-        didAttend ? 'needs_retry' : 'not_piked'
+        didAttend ? 'retry' : 'excellent'
       ),
       overallRating: didAttend ? 'needs_attention' : undefined,
       completed: didAttend,
