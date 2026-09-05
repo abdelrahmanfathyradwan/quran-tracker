@@ -18,9 +18,9 @@ export const GRADE_LABELS: Record<SchoolGrade, string> = {
   grade_4: 'الصف الرابع',
   grade_5: 'الصف الخامس',
   grade_6: 'الصف السادس',
-  grade_7: 'الصف الأول متوسط',
-  grade_8: 'الصف الثاني متوسط',
-  grade_9: 'الصف الثالث متوسط',
+  grade_7: 'الصف الأول الإعدادي',
+  grade_8: 'الصف الثاني الإعدادي',
+  grade_9: 'الصف الثالث الإعدادي',
   grade_10: 'الصف الأول ثانوي',
   grade_11: 'الصف الثاني ثانوي',
   grade_12: 'الصف الثالث ثانوي',
@@ -31,18 +31,21 @@ export const GRADE_LABELS: Record<SchoolGrade, string> = {
 export interface Student {
   id: string;
   name: string;
+  imageUrl?: string; // صورة الطالب
   grade?: SchoolGrade; // الصف الدراسي
   startDate: string; // ISO date string
   currentMemorization: string; // e.g., "5 أجزاء و 12 صفحة"
   currentPosition: string; // e.g., "سورة النساء — الآية 35"
   notes?: string;
   status: StudentStatus;
+  prayedFajr?: boolean; // هل صلى الفجر أم لا
   createdAt: string;
   updatedAt: string;
 }
 
 export interface StudentFormData {
   name: string;
+  imageUrl?: string;
   grade?: SchoolGrade;
   startDate: string;
   currentMemorization: string;

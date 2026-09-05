@@ -28,6 +28,8 @@ export interface Session {
   overallRating?: SessionRating;
   notes?: string;
 
+  teacherName?: string; // اسم الشيخ الذي قام بالتسميع
+
   completed: boolean;
   completedAt?: string;
   startedAt?: string; // ISO timestamp — when the teacher started the session
@@ -41,6 +43,7 @@ export interface SessionFormData {
   overallRating?: SessionRating;
   notes?: string;
   durationSeconds?: number;
+  teacherName?: string;
 }
 
 export const RATING_LABELS: Record<SessionRating, string> = {
