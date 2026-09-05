@@ -7,11 +7,11 @@ class StudentService {
   /**
    * Calculate a student's commitment level based on their session history.
    */
-  getCommitmentLevel(studentId: string): CommitmentLevel {
-    const activePlan = planRepository.getActivePlan(studentId);
+  async getCommitmentLevel(studentId: string): Promise<CommitmentLevel> {
+    const activePlan = await planRepository.getActivePlan(studentId);
     if (!activePlan) return 'good';
 
-    const sessions = sessionRepository.getByPlan(activePlan.id);
+    const sessions = await sessionRepository.getByPlan(activePlan.id);
     const today = new Date().toISOString().split('T')[0];
 
     const pastSessions = sessions.filter((s) => s.date <= today);
@@ -29,35 +29,37 @@ class StudentService {
   /**
    * Get plan progress for a student.
    */
-  getPlanProgress(studentId: string): {
+  async getPlanProgress(studentId: string): Promise<{
     totalSessions: number;
     completedSessions: number;
     percentage: number;
     status: CommitmentLevel;
-  } | null {
-    const activePlan = planRepository.getActivePlan(studentId);
+  } | null> {
+    const activePlan = await planRepository.getActivePlan(studentId);
     if (!activePlan) return null;
 
-    const sessions = sessionRepository.getByPlan(activePlan.id);
+    const sessions = await sessionRepository.getByPlan(activePlan.id);
     const completedSessions = sessions.filter((s) => s.completed).length;
     const percentage =
       sessions.length > 0
         ? Math.round((completedSessions / sessions.length) * 100)
         : 0;
 
+    const status = await this.getCommitmentLevel(studentId);
+
     return {
       totalSessions: sessions.length,
       completedSessions,
       percentage,
-      status: this.getCommitmentLevel(studentId),
+      status,
     };
   }
 
   /**
    * Get the last session date for a student.
    */
-  getLastSessionDate(studentId: string): string | null {
-    const completed = sessionRepository.getCompletedByStudent(studentId);
+  async getLastSessionDate(studentId: string): Promise<string | null> {
+    const completed = await sessionRepository.getCompletedByStudent(studentId);
     if (completed.length === 0) return null;
     return completed[0].date;
   }
@@ -65,39 +67,40 @@ class StudentService {
   /**
    * Delete a student and all their related data.
    */
-  deleteStudentWithData(studentId: string): void {
+  async deleteStudentWithData(studentId: string): Promise<void> {
     // Delete all plans and their sessions
-    const plans = planRepository.getPlansByStudent(studentId);
-    plans.forEach((plan) => {
-      planRepository.deletePlanWithSessions(plan.id);
-    });
+    const plans = await planRepository.getPlansByStudent(studentId);
+    for (const plan of plans) {
+      await planRepository.deletePlanWithSessions(plan.id);
+    }
     // Delete the student
-    studentRepository.delete(studentId);
+    await studentRepository.delete(studentId);
   }
 
   /**
    * Get dashboard summary statistics.
    */
-  getDashboardStats(): {
+  async getDashboardStats(): Promise<{
     totalStudents: number;
     todaySessions: number;
     regularStudents: number;
     needsAttention: number;
-  } {
-    const students = studentRepository.getActiveStudents();
-    const todaySessions = sessionRepository.getTodaySessions();
+  }> {
+    const students = await studentRepository.getActiveStudents();
+    const todaySessions = await sessionRepository.getTodaySessions();
 
     let regularCount = 0;
     let attentionCount = 0;
 
-    students.forEach((student) => {
-      const level = this.getCommitmentLevel(student.id);
+    // Use for...of to properly await getCommitmentLevel in a loop
+    for (const student of students) {
+      const level = await this.getCommitmentLevel(student.id);
       if (level === 'excellent' || level === 'good') {
         regularCount++;
       } else {
         attentionCount++;
       }
-    });
+    }
 
     return {
       totalStudents: students.length,

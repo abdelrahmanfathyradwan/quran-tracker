@@ -30,6 +30,7 @@ import {
   SessionRating,
   Session,
 } from '@/lib/types/session';
+import { LoadingPage } from '@/components/shared/loading';
 
 interface DaySummary {
   date: string;
@@ -84,64 +85,67 @@ export default function HistoryPage() {
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [allStudents, setAllStudents] = useState<Record<string, string>>({});
 
+  const [summary, setSummary] = useState<DaySummary | null>(null);
+
   useEffect(() => {
-    const students = studentRepository.getAll();
-    const nameMap: Record<string, string> = {};
-    students.forEach((s) => {
-      nameMap[s.id] = s.name;
-    });
-    setAllStudents(nameMap);
-  }, []);
+    async function loadData() {
+      const students = await studentRepository.getAll();
+      const nameMap: Record<string, string> = {};
+      students.forEach((s) => {
+        nameMap[s.id] = s.name;
+      });
+      setAllStudents(nameMap);
 
-  const summary: DaySummary = useMemo(() => {
-    const sessions = sessionRepository.getByDate(selectedDate);
+      const sessions = await sessionRepository.getByDate(selectedDate);
 
-    const ratingBreakdown: Record<SessionRating, number> = {
-      excellent: 0,
-      very_good: 0,
-      good: 0,
-      needs_attention: 0,
-    };
+      const ratingBreakdown: Record<SessionRating, number> = {
+        excellent: 0,
+        very_good: 0,
+        good: 0,
+        needs_attention: 0,
+      };
 
-    const statusBreakdown = {
-      newMemorization: { excellent: 0, very_good: 0, good: 0, retry: 0 } as Record<RecitationStatus, number>,
-      recentRevision: { excellent: 0, very_good: 0, good: 0, retry: 0 } as Record<RecitationStatus, number>,
-      distantRevision: { excellent: 0, very_good: 0, good: 0, retry: 0 } as Record<RecitationStatus, number>,
-    };
+      const statusBreakdown = {
+        newMemorization: { excellent: 0, very_good: 0, good: 0, retry: 0 } as Record<RecitationStatus, number>,
+        recentRevision: { excellent: 0, very_good: 0, good: 0, retry: 0 } as Record<RecitationStatus, number>,
+        distantRevision: { excellent: 0, very_good: 0, good: 0, retry: 0 } as Record<RecitationStatus, number>,
+      };
 
-    let totalMistakes = 0;
-    const completedSessions = sessions.filter((s) => s.completed);
+      let totalMistakes = 0;
+      const completedSessions = sessions.filter((s) => s.completed);
 
-    completedSessions.forEach((s) => {
-      if (s.overallRating) {
-        ratingBreakdown[s.overallRating]++;
-      }
+      completedSessions.forEach((s) => {
+        if (s.overallRating) {
+          ratingBreakdown[s.overallRating]++;
+        }
 
-      statusBreakdown.newMemorization[s.newMemorization.status]++;
-      statusBreakdown.recentRevision[s.recentRevision.status]++;
-      statusBreakdown.distantRevision[s.distantRevision.status]++;
+        statusBreakdown.newMemorization[s.newMemorization.status]++;
+        statusBreakdown.recentRevision[s.recentRevision.status]++;
+        statusBreakdown.distantRevision[s.distantRevision.status]++;
 
-      totalMistakes +=
-        (s.newMemorization.mistakes || 0) +
-        (s.recentRevision.mistakes || 0) +
-        (s.distantRevision.mistakes || 0);
-    });
+        totalMistakes +=
+          (s.newMemorization.mistakes || 0) +
+          (s.recentRevision.mistakes || 0) +
+          (s.distantRevision.mistakes || 0);
+      });
 
-    return {
-      date: selectedDate,
-      totalSessions: sessions.length,
-      completedSessions: completedSessions.length,
-      pendingSessions: sessions.length - completedSessions.length,
-      students: sessions.map((s) => ({
-        id: s.studentId,
-        name: allStudents[s.studentId] || 'طالب',
-        session: s,
-      })),
-      ratingBreakdown,
-      statusBreakdown,
-      totalMistakes,
-    };
-  }, [selectedDate, allStudents]);
+      setSummary({
+        date: selectedDate,
+        totalSessions: sessions.length,
+        completedSessions: completedSessions.length,
+        pendingSessions: sessions.length - completedSessions.length,
+        students: sessions.map((s) => ({
+          id: s.studentId,
+          name: nameMap[s.studentId] || 'طالب',
+          session: s,
+        })),
+        ratingBreakdown,
+        statusBreakdown,
+        totalMistakes,
+      });
+    }
+    loadData();
+  }, [selectedDate]);
 
   const navigateDate = (direction: number) => {
     const date = new Date(selectedDate);
@@ -150,6 +154,8 @@ export default function HistoryPage() {
   };
 
   const isToday = selectedDate === getTodayString();
+
+  if (!summary) return <LoadingPage message="جاري إعداد السجل..." />;
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto pb-12 animate-fade-in">

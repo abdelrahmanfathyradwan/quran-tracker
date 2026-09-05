@@ -8,15 +8,21 @@ export function useSessions(planId?: string, studentId?: string) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => {
-    if (planId) {
-      setSessions(sessionRepository.getByPlan(planId));
-    } else if (studentId) {
-      setSessions(sessionRepository.getByStudent(studentId));
-    } else {
-      setSessions(sessionRepository.getAll());
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (planId) {
+        setSessions(await sessionRepository.getByPlan(planId));
+      } else if (studentId) {
+        setSessions(await sessionRepository.getByStudent(studentId));
+      } else {
+        setSessions(await sessionRepository.getAll());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [planId, studentId]);
 
   useEffect(() => {
@@ -24,25 +30,25 @@ export function useSessions(planId?: string, studentId?: string) {
   }, [refresh]);
 
   const completeSession = useCallback(
-    (id: string, data: SessionFormData) => {
-      const session = sessionRepository.completeSession(id, data);
-      refresh();
+    async (id: string, data: SessionFormData) => {
+      const session = await sessionRepository.completeSession(id, data);
+      await refresh();
       return session;
     },
     [refresh]
   );
 
   const updateSession = useCallback(
-    (id: string, updates: Partial<Session>) => {
-      const session = sessionRepository.update(id, updates);
-      refresh();
+    async (id: string, updates: Partial<Session>) => {
+      const session = await sessionRepository.update(id, updates);
+      await refresh();
       return session;
     },
     [refresh]
   );
 
-  const getTodaySessions = useCallback(() => {
-    return sessionRepository.getTodaySessions();
+  const getTodaySessions = useCallback(async () => {
+    return await sessionRepository.getTodaySessions();
   }, []);
 
   return {
@@ -54,3 +60,4 @@ export function useSessions(planId?: string, studentId?: string) {
     refresh,
   };
 }
+

@@ -9,13 +9,19 @@ export function usePlans(studentId?: string) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => {
-    if (studentId) {
-      setPlans(planRepository.getPlansByStudent(studentId));
-    } else {
-      setPlans(planRepository.getAll());
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (studentId) {
+        setPlans(await planRepository.getPlansByStudent(studentId));
+      } else {
+        setPlans(await planRepository.getAll());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [studentId]);
 
   useEffect(() => {
@@ -23,25 +29,25 @@ export function usePlans(studentId?: string) {
   }, [refresh]);
 
   const createPlan = useCallback(
-    (data: PlanFormData): { plan: Plan; sessions: Session[] } => {
-      const result = planRepository.createPlan(data);
-      refresh();
+    async (data: PlanFormData): Promise<{ plan: Plan; sessions: Session[] }> => {
+      const result = await planRepository.createPlan(data);
+      await refresh();
       return result;
     },
     [refresh]
   );
 
   const deletePlan = useCallback(
-    (planId: string) => {
-      planRepository.deletePlanWithSessions(planId);
-      refresh();
+    async (planId: string) => {
+      await planRepository.deletePlanWithSessions(planId);
+      await refresh();
     },
     [refresh]
   );
 
   const getActivePlan = useCallback(
-    (sid: string) => {
-      return planRepository.getActivePlan(sid);
+    async (sid: string) => {
+      return await planRepository.getActivePlan(sid);
     },
     []
   );
@@ -55,3 +61,4 @@ export function usePlans(studentId?: string) {
     refresh,
   };
 }
+

@@ -8,9 +8,16 @@ export function useStudents() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => {
-    setStudents(studentRepository.getAll());
-    setLoading(false);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await studentRepository.getAll();
+      setStudents(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -18,33 +25,33 @@ export function useStudents() {
   }, [refresh]);
 
   const addStudent = useCallback(
-    (data: StudentFormData) => {
-      const student = studentRepository.createStudent(data);
-      refresh();
+    async (data: StudentFormData) => {
+      const student = await studentRepository.createStudent(data);
+      await refresh();
       return student;
     },
     [refresh]
   );
 
   const updateStudent = useCallback(
-    (id: string, data: Partial<StudentFormData>) => {
-      const student = studentRepository.updateStudent(id, data);
-      refresh();
+    async (id: string, data: Partial<StudentFormData>) => {
+      const student = await studentRepository.updateStudent(id, data);
+      await refresh();
       return student;
     },
     [refresh]
   );
 
   const deleteStudent = useCallback(
-    (id: string) => {
-      studentRepository.delete(id);
-      refresh();
+    async (id: string) => {
+      await studentRepository.delete(id);
+      await refresh();
     },
     [refresh]
   );
 
-  const searchStudents = useCallback((query: string) => {
-    return studentRepository.search(query);
+  const searchStudents = useCallback(async (query: string) => {
+    return await studentRepository.search(query);
   }, []);
 
   return {
@@ -57,3 +64,4 @@ export function useStudents() {
     refresh,
   };
 }
+

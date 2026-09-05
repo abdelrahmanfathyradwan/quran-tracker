@@ -1,65 +1,47 @@
-import { IStorageProvider } from '../storage/storage-interface';
-import { storageProvider } from '../storage/local-storage';
+import { apiClient } from '../api-client';
 
 /**
- * Base repository providing generic CRUD operations.
+ * Base repository providing generic async CRUD operations via API routes.
  * All entity-specific repositories extend this.
  */
 export class BaseRepository<T extends { id: string }> {
-  protected storage: IStorageProvider;
-  protected key: string;
+  protected collection: string;
 
-  constructor(key: string, storage?: IStorageProvider) {
-    this.key = key;
-    this.storage = storage || storageProvider;
+  constructor(collection: string) {
+    this.collection = collection;
   }
 
-  getAll(): T[] {
-    return this.storage.get<T[]>(this.key) || [];
+  async getAll(): Promise<T[]> {
+    return apiClient.getAll<T>(this.collection);
   }
 
-  getById(id: string): T | undefined {
-    const items = this.getAll();
-    return items.find((item) => item.id === id);
+  async getById(id: string): Promise<T | undefined> {
+    const item = await apiClient.getById<T>(this.collection, id);
+    return item ?? undefined;
   }
 
-  create(item: T): T {
-    const items = this.getAll();
-    items.push(item);
-    this.storage.set(this.key, items);
-    return item;
+  async create(item: T): Promise<T> {
+    return apiClient.create<T>(this.collection, item);
   }
 
-  update(id: string, updates: Partial<T>): T | undefined {
-    const items = this.getAll();
-    const index = items.findIndex((item) => item.id === id);
-    if (index === -1) return undefined;
-
-    items[index] = { ...items[index], ...updates };
-    this.storage.set(this.key, items);
-    return items[index];
+  async update(id: string, updates: Partial<T>): Promise<T | undefined> {
+    const item = await apiClient.update<T>(this.collection, id, updates);
+    return item ?? undefined;
   }
 
-  delete(id: string): boolean {
-    const items = this.getAll();
-    const filtered = items.filter((item) => item.id !== id);
-    if (filtered.length === items.length) return false;
-
-    this.storage.set(this.key, filtered);
-    return true;
+  async delete(id: string): Promise<boolean> {
+    return apiClient.remove(this.collection, id);
   }
 
-  deleteMany(ids: string[]): void {
-    const items = this.getAll();
-    const filtered = items.filter((item) => !ids.includes(item.id));
-    this.storage.set(this.key, filtered);
+  async deleteMany(ids: string[]): Promise<void> {
+    return apiClient.deleteMany(this.collection, ids);
   }
 
-  setAll(items: T[]): void {
-    this.storage.set(this.key, items);
+  async setAll(items: T[]): Promise<void> {
+    return apiClient.setAll(this.collection, items);
   }
 
-  clear(): void {
-    this.storage.set(this.key, []);
+  async clear(): Promise<void> {
+    return apiClient.clear(this.collection);
   }
 }

@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { CalendarDays, BookOpen, Clock, FileText, ArrowRight } from 'lucide-react';
+import { CalendarDays, BookOpen, Clock, FileText, ArrowRight, Pencil, Camera, X, Check } from 'lucide-react';
 import { studentRepository } from '@/lib/repositories/student-repository';
 import { planRepository } from '@/lib/repositories/plan-repository';
 import { sessionRepository } from '@/lib/repositories/session-repository';
 import { studentService } from '@/lib/services';
 import { PageHeader, StatusBadge, ProgressBar, EmptyState } from '@/components/shared';
 import { formatArabicDateWithDay } from '@/lib/utils/date-utils';
-import { Student, GRADE_LABELS } from '@/lib/types/student';
+import { Student, StudentFormData, GRADE_LABELS } from '@/lib/types/student';
 import { Plan } from '@/lib/types/plan';
 import { Session } from '@/lib/types/session';
 
@@ -21,28 +21,75 @@ export default function StudentProfilePage() {
   const [activePlan, setActivePlan] = useState<Plan | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'plan' | 'history' | 'notes'>('overview');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<StudentFormData>>({});
+  const [progress, setProgress] = useState<any>(null);
+  const [lastSessionDate, setLastSessionDate] = useState<string | null>(null);
+
+  const handleEditClick = () => {
+    if (student) {
+      setEditForm({
+        name: student.name,
+        grade: student.grade,
+        startDate: student.startDate,
+        currentMemorization: student.currentMemorization,
+        currentPosition: student.currentPosition,
+        notes: student.notes,
+        imageUrl: student.imageUrl,
+      });
+      setIsEditing(true);
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditForm(prev => ({ ...prev, imageUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = async () => {
+    if (student) {
+      await studentRepository.updateStudent(student.id, editForm);
+      setStudent({ ...student, ...editForm } as Student);
+      setIsEditing(false);
+    }
+  };
 
   useEffect(() => {
-    const foundStudent = studentRepository.getById(id);
-    if (!foundStudent) {
-      router.push('/students');
-      return;
-    }
-    setStudent(foundStudent);
+    async function loadData() {
+      const foundStudent = await studentRepository.getById(id);
+      if (!foundStudent) {
+        router.push('/students');
+        return;
+      }
+      setStudent(foundStudent);
 
-    const plan = planRepository.getActivePlan(id) || null;
-    setActivePlan(plan);
+      const plan = await planRepository.getActivePlan(id) || null;
+      setActivePlan(plan);
 
-    if (plan) {
-      setSessions(sessionRepository.getByPlan(plan.id));
-    } else {
-      setSessions(sessionRepository.getByStudent(id));
+      if (plan) {
+        setSessions(await sessionRepository.getByPlan(plan.id));
+      } else {
+        setSessions(await sessionRepository.getByStudent(id));
+      }
+
+      const p = await studentService.getPlanProgress(id);
+      setProgress(p);
+
+      const lsd = await studentService.getLastSessionDate(id);
+      setLastSessionDate(lsd);
     }
+    loadData();
   }, [id, router]);
 
   if (!student) return <div className="py-8 text-center">جاري التحميل...</div>;
 
-  const progress = studentService.getPlanProgress(student.id);
+
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -56,47 +103,142 @@ export default function StudentProfilePage() {
 
       {/* Header Profile Section */}
       <div className="bg-white border border-stone-200 rounded-xl p-5 md:p-6 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-stone-900">{student.name}</h1>
-              {student.grade && (
-                <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
-                  {GRADE_LABELS[student.grade]}
-                </span>
-              )}
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-stone-900">تعديل بيانات الطالب</h2>
+              <div className="flex gap-2">
+                <button onClick={() => setIsEditing(false)} className="p-2 text-stone-400 hover:text-stone-600 rounded-full hover:bg-stone-100">
+                  <X className="w-5 h-5" />
+                </button>
+                <button onClick={handleSave} className="p-2 text-emerald-600 hover:text-emerald-700 rounded-full hover:bg-emerald-50">
+                  <Check className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-            <p className="text-stone-500 text-sm">تاريخ بداية المتابعة: {student.startDate}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <StatusBadge level={progress ? progress.status : 'good'} />
-            <Link
-              href={`/plans?studentId=${student.id}`}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors"
-            >
-              إعداد خطة جديدة
-            </Link>
-          </div>
-        </div>
+            
+            <div className="flex gap-6 items-start">
+              <div className="relative group shrink-0">
+                <div className="w-24 h-24 rounded-full border-2 border-stone-200 overflow-hidden bg-stone-50 flex items-center justify-center">
+                  {editForm.imageUrl ? (
+                    <img src={editForm.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-8 h-8 text-stone-300" />
+                  )}
+                </div>
+                <label className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                  <Camera className="w-6 h-6 text-white" />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+              </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-stone-100">
-          <div>
-            <span className="block text-stone-400 text-xs mb-1">المحفوظ الحالي</span>
-            <span className="font-semibold text-stone-800 text-sm">{student.currentMemorization || 'غير محدد'}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+                <div>
+                  <label className="block text-xs text-stone-500 mb-1">الاسم</label>
+                  <input
+                    type="text"
+                    value={editForm.name || ''}
+                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-stone-500 mb-1">الصف الدراسي</label>
+                  <select
+                    value={editForm.grade || ''}
+                    onChange={e => setEditForm({ ...editForm, grade: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                  >
+                    <option value="">غير محدد</option>
+                    {Object.entries(GRADE_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-stone-500 mb-1">المحفوظ الحالي</label>
+                  <input
+                    type="text"
+                    value={editForm.currentMemorization || ''}
+                    onChange={e => setEditForm({ ...editForm, currentMemorization: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-stone-500 mb-1">الموضع الحالي</label>
+                  <input
+                    type="text"
+                    value={editForm.currentPosition || ''}
+                    onChange={e => setEditForm({ ...editForm, currentPosition: e.target.value })}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div>
-            <span className="block text-stone-400 text-xs mb-1">الموضع الحالي</span>
-            <span className="font-semibold text-stone-800 text-sm">{student.currentPosition || 'غير محدد'}</span>
-          </div>
-          <div>
-            <span className="block text-stone-400 text-xs mb-1">الخطة الحالية</span>
-            <span className="font-semibold text-stone-800 text-sm">{activePlan ? activePlan.name : 'لا توجد خطة نشطة'}</span>
-          </div>
-          <div>
-            <span className="block text-stone-400 text-xs mb-1">نسبة الإنجاز بالخطة</span>
-            <span className="font-semibold text-emerald-600 text-sm">{progress ? `${progress.percentage}%` : '0%'}</span>
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full border border-stone-200 overflow-hidden bg-stone-50 shrink-0">
+                  {student.imageUrl ? (
+                    <img src={student.imageUrl} alt={student.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-stone-400 font-bold text-xl">
+                      {student.name.charAt(0)}
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-xl font-bold text-stone-900">{student.name}</h1>
+                    {student.grade && (
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
+                        {GRADE_LABELS[student.grade]}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-stone-500 text-sm">تاريخ بداية المتابعة: {student.startDate}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={handleEditClick}
+                  className="p-2 text-stone-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
+                  title="تعديل بيانات الطالب"
+                >
+                  <Pencil className="w-5 h-5" />
+                </button>
+                <StatusBadge level={progress ? progress.status : 'good'} />
+                <Link
+                  href={`/plans?studentId=${student.id}`}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                >
+                  إعداد خطة جديدة
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-stone-100">
+              <div>
+                <span className="block text-stone-400 text-xs mb-1">المحفوظ الحالي</span>
+                <span className="font-semibold text-stone-800 text-sm">{student.currentMemorization || 'غير محدد'}</span>
+              </div>
+              <div>
+                <span className="block text-stone-400 text-xs mb-1">الموضع الحالي</span>
+                <span className="font-semibold text-stone-800 text-sm">{student.currentPosition || 'غير محدد'}</span>
+              </div>
+              <div>
+                <span className="block text-stone-400 text-xs mb-1">الخطة الحالية</span>
+                <span className="font-semibold text-stone-800 text-sm">{activePlan ? activePlan.name : 'لا توجد خطة نشطة'}</span>
+              </div>
+              <div>
+                <span className="block text-stone-400 text-xs mb-1">نسبة الإنجاز بالخطة</span>
+                <span className="font-semibold text-emerald-600 text-sm">{progress ? `${progress.percentage}%` : '0%'}</span>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Tabs */}
@@ -164,7 +306,7 @@ export default function StudentProfilePage() {
                 <div className="flex justify-between">
                   <span>آخر تسميع</span>
                   <span className="font-medium text-stone-800">
-                    {studentService.getLastSessionDate(student.id) || 'لم يسمع بعد'}
+                    {lastSessionDate || 'لم يسمع بعد'}
                   </span>
                 </div>
                 <div className="flex justify-between">

@@ -19,9 +19,10 @@ function createRecitationItem(
   return { content, amount, status, mistakes, notes: '' };
 }
 
-export function loadSeedData(): void {
+export async function loadSeedData(): Promise<void> {
   // Check if data already exists
-  if (studentRepository.getAll().length > 0) return;
+  const existingStudents = await studentRepository.getAll();
+  if (existingStudents.length > 0) return;
 
   const now = new Date().toISOString();
   const today = new Date().toISOString().split('T')[0];
@@ -114,8 +115,9 @@ export function loadSeedData(): void {
     },
   ];
 
-  students.forEach((s) => studentRepository.create(s));
-
+  for (const s of students) {
+    await studentRepository.create(s);
+  }
   // ── Plans ──────────────────────────────────────────
   // Plan for student_1 (excellent student) — current month
   const planId1 = 'plan_1';
@@ -170,10 +172,10 @@ export function loadSeedData(): void {
     updatedAt: now,
   };
 
-  planRepository.create(plan1);
-  planRepository.create(plan2);
-  planRepository.create(plan3);
-  planRepository.create(plan5);
+  await planRepository.create(plan1);
+  await planRepository.create(plan2);
+  await planRepository.create(plan3);
+  await planRepository.create(plan5);
 
   // ── Sessions for plan_1 (excellent student) ──────────
   const plan1Dates = getRecitationDatesForSeed('2026-08-01', '2026-08-31', [6, 1, 3]);
@@ -304,9 +306,10 @@ export function loadSeedData(): void {
   });
 
   // Save all sessions
-  [...plan1Sessions, ...plan2Sessions, ...plan3Sessions, ...plan5Sessions].forEach(
-    (s) => sessionRepository.create(s)
-  );
+  const allSessions = [...plan1Sessions, ...plan2Sessions, ...plan3Sessions, ...plan5Sessions];
+  for (const s of allSessions) {
+    await sessionRepository.create(s);
+  }
 }
 
 function getRecitationDatesForSeed(

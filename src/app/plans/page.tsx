@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, Trash2, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, CalendarDays, Loader2 } from 'lucide-react';
 import { studentRepository } from '@/lib/repositories/student-repository';
 import { planRepository } from '@/lib/repositories/plan-repository';
-import { PageHeader, EmptyState, ConfirmDialog } from '@/components/shared';
+import { PageHeader, EmptyState, ConfirmDialog, CardSkeleton, LoadingPage } from '@/components/shared';
 import { usePlans } from '@/lib/hooks';
 import { Plan } from '@/lib/types/plan';
 import { Student } from '@/lib/types/student';
@@ -27,9 +27,10 @@ function PlansContent() {
   const searchParams = useSearchParams();
   const studentIdParam = searchParams.get('studentId') || '';
 
-  const { plans, createPlan, deletePlan } = usePlans();
+  const { plans, loading, createPlan, deletePlan } = usePlans();
   const [students, setStudents] = useState<Student[]>([]);
   const [showAddPlan, setShowAddPlan] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Form State
@@ -40,7 +41,12 @@ function PlansContent() {
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
   useEffect(() => {
-    setStudents(studentRepository.getAll());
+    async function loadStudents() {
+      const allStudents = await studentRepository.getAll();
+      setStudents(allStudents);
+    }
+    loadStudents();
+
     if (studentIdParam) {
       setStudentId(studentIdParam);
       setShowAddPlan(true);
@@ -55,11 +61,13 @@ function PlansContent() {
     }
   };
 
-  const handleCreatePlan = (e: React.FormEvent) => {
+  const handleCreatePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId || !name || !startDate || !endDate || selectedDays.length === 0) return;
 
-    createPlan({
+    setIsSubmitting(true);
+
+    await createPlan({
       studentId,
       name,
       startDate,
@@ -67,18 +75,19 @@ function PlansContent() {
       recitationDays: selectedDays,
     });
 
-    // Reset Form
+    // Reset and close
+    setStudentId('');
     setName('');
     setStartDate('');
     setEndDate('');
     setSelectedDays([]);
+    setIsSubmitting(false);
     setShowAddPlan(false);
-    router.push(`/students/${studentId}`);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteConfirmId) {
-      deletePlan(deleteConfirmId);
+      await deletePlan(deleteConfirmId);
       setDeleteConfirmId(null);
     }
   };
@@ -103,7 +112,13 @@ function PlansContent() {
         }
       />
 
-      {plans.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+      ) : plans.length === 0 ? (
         <EmptyState
           icon={CalendarDays}
           title="لا توجد خطط دراسية نشطة"
@@ -155,19 +170,31 @@ function PlansContent() {
 
       {/* Add Plan Modal */}
       {showAddPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/35 backdrop-blur-xs" onClick={() => setShowAddPlan(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 overflow-y-auto max-h-[95vh] animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-lg font-bold text-stone-900 mb-4">إنشاء خطة جديدة</h3>
-            
-            <form onSubmit={handleCreatePlan} className="space-y-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setShowAddPlan(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-stone-100 bg-gradient-to-r from-emerald-50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-stone-900">إنشاء خطة جديدة</h3>
+                  <p className="text-xs text-stone-500">حدد تفاصيل الخطة الدراسية</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCreatePlan} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">اختر الطالب *</label>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">اختر الطالب *</label>
                 <select
                   required
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all bg-white"
                 >
                   <option value="">-- اختر طالبًا --</option>
                   {students.map((s) => (
@@ -179,43 +206,43 @@ function PlansContent() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">اسم الخطة الدراسي *</label>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">اسم الخطة *</label>
                 <input
                   type="text"
                   required
                   placeholder="مثال: خطة سبتمبر 2026"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">تاريخ البدء *</label>
+                  <label className="block text-sm font-semibold text-stone-700 mb-2">تاريخ البدء *</label>
                   <input
                     type="date"
                     required
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">تاريخ الانتهاء *</label>
+                  <label className="block text-sm font-semibold text-stone-700 mb-2">تاريخ الانتهاء *</label>
                   <input
                     type="date"
                     required
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">حدد أيام التسميع الأسبوعية (اختر 3 أيام) *</label>
-                <div className="grid grid-cols-4 gap-2 mt-1.5">
+                <label className="block text-sm font-semibold text-stone-700 mb-2">أيام التسميع الأسبوعية (اختر 3 أيام) *</label>
+                <div className="grid grid-cols-4 gap-2 mt-2">
                   {WEEKDAYS.map((day) => {
                     const isChecked = selectedDays.includes(day.value);
                     return (
@@ -223,7 +250,7 @@ function PlansContent() {
                         key={day.value}
                         type="button"
                         onClick={() => handleDayToggle(day.value)}
-                        className={`px-3 py-2 text-xs font-semibold border rounded-lg transition-all ${
+                        className={`px-3 py-2 text-xs font-semibold border rounded-xl transition-all ${
                           isChecked
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                             : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
@@ -235,27 +262,29 @@ function PlansContent() {
                   })}
                 </div>
                 {selectedDays.length !== 3 && (
-                  <p className="text-[11px] text-amber-600 mt-1.5">يرجى تحديد 3 أيام أسبوعية لتوزيع جدول التسميع.</p>
+                  <p className="text-xs text-amber-600 mt-2">يرجى تحديد 3 أيام أسبوعية لتوزيع جدول التسميع.</p>
                 )}
               </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddPlan(false)}
-                  className="px-4 py-2 border border-stone-200 rounded-lg text-sm text-stone-600 hover:bg-stone-50"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  disabled={selectedDays.length !== 3}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-lg text-sm font-semibold transition-colors"
-                >
-                  حفظ الخطة
-                </button>
-              </div>
             </form>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-stone-50 border-t border-stone-100 flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowAddPlan(false)}
+                className="px-5 py-2.5 text-sm font-semibold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-100 transition-all shadow-sm"
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                disabled={selectedDays.length !== 3 || isSubmitting}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-xl text-sm font-semibold transition-all shadow-md"
+              >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isSubmitting ? 'جاري الحفظ...' : 'حفظ الخطة'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -276,7 +305,7 @@ function PlansContent() {
 
 export default function PlansPage() {
   return (
-    <Suspense fallback={<div className="py-8 text-center text-stone-500">جاري تحميل الخطط الدراسية...</div>}>
+    <Suspense fallback={<LoadingPage message="جاري تحميل الخطط الدراسية..." />}>
       <PlansContent />
     </Suspense>
   );

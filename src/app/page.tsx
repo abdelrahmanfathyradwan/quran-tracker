@@ -9,6 +9,7 @@ import { formatArabicDate, isToday } from '@/lib/utils/date-utils';
 import { getCommitmentColor, getCommitmentLabel } from '@/lib/utils/format-utils';
 import { loadSeedData } from '@/lib/seed-data';
 import { Session } from '@/lib/types/session';
+import { LoadingPage } from '@/components/shared/loading';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -22,29 +23,35 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load statistics
-    const dashboardStats = studentService.getDashboardStats();
-    setStats(dashboardStats);
+    async function loadData() {
+      try {
+        const dashboardStats = await studentService.getDashboardStats();
+        setStats(dashboardStats);
 
-    // Get today's recitation sessions
-    const sessions = sessionRepository.getTodaySessions();
-    setTodaySessions(sessions);
+        const sessions = await sessionRepository.getTodaySessions();
+        setTodaySessions(sessions);
 
-    // Get student names for lookup
-    const students = studentService.getDashboardStats(); // to trigger check, but let's grab directly
-    const allStudents = require('@/lib/repositories/student-repository').studentRepository.getAll();
-    const nameMap: Record<string, string> = {};
-    allStudents.forEach((s: any) => {
-      nameMap[s.id] = s.name;
-    });
-    setStudentNames(nameMap);
-    setLoading(false);
+        const { studentRepository } = require('@/lib/repositories/student-repository');
+        const allStudents = await studentRepository.getAll();
+        const nameMap: Record<string, string> = {};
+        allStudents.forEach((s: any) => {
+          nameMap[s.id] = s.name;
+        });
+        setStudentNames(nameMap);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadData();
   }, []);
 
   const arabicDate = formatArabicDate(new Date());
 
   if (loading) {
-    return <div className="py-8 text-center text-stone-500">جاري التحميل...</div>;
+    return <LoadingPage message="جاري تجهيز لوحة التحكم..." />;
   }
 
   return (
@@ -53,7 +60,7 @@ export default function Dashboard() {
       <div className="flex flex-col gap-1">
       <div className="flex flex-row justify-between">
          <h1 className="text-2xl font-bold text-green-700">اللهم صلي و سلم و بارك علي سيدنا محمد</h1>
-         <h4 className="text-xl font-bold text-green-700">طلاب / عبدالحمن</h4>
+        
       </div>
         <p className="text-stone-500 text-sm">{arabicDate}</p>
       </div>
@@ -112,13 +119,13 @@ export default function Dashboard() {
                     </h3>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
                       <span>
-                        <strong className="text-stone-700">الجديد:</strong> {session.newMemorization.content || 'غير محدد'}
+                        <strong className="text-stone-700">الجديد:</strong> {session.newMemorization.amount || session.newMemorization.content || 'غير محدد'}
                       </span>
                       <span>
-                        <strong className="text-stone-700">المراجعة القريبة:</strong> {session.recentRevision.content || 'غير محدد'}
+                        <strong className="text-stone-700">المراجعة القريبة:</strong> {session.recentRevision.amount || session.recentRevision.content || 'غير محدد'}
                       </span>
                       <span>
-                        <strong className="text-stone-700">البعيدة:</strong> {session.distantRevision.content || 'غير محدد'}
+                        <strong className="text-stone-700"> المراجعة البعيدة: </strong> {session.distantRevision.amount || session.distantRevision.content || 'غير محدد'}
                       </span>
                     </div>
                   </div>

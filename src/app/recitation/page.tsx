@@ -8,6 +8,7 @@ import { studentRepository } from '@/lib/repositories/student-repository';
 import { PageHeader, EmptyState } from '@/components/shared';
 import { formatArabicDateWithDay } from '@/lib/utils/date-utils';
 import { Session } from '@/lib/types/session';
+import { LoadingPage } from '@/components/shared/loading';
 
 export default function RecitationPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -15,21 +16,24 @@ export default function RecitationPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load sessions scheduled for today
-    const todaySessions = sessionRepository.getTodaySessions();
-    setSessions(todaySessions);
+    async function loadData() {
+      // Load sessions scheduled for today
+      const todaySessions = await sessionRepository.getTodaySessions();
+      setSessions(todaySessions);
 
-    // Grab student names for lookup
-    const allStudents = studentRepository.getAll();
-    const nameMap: Record<string, string> = {};
-    allStudents.forEach((s) => {
-      nameMap[s.id] = s.name;
-    });
-    setStudentNames(nameMap);
-    setLoading(false);
+      // Grab student names for lookup
+      const allStudents = await studentRepository.getAll();
+      const nameMap: Record<string, string> = {};
+      allStudents.forEach((s) => {
+        nameMap[s.id] = s.name;
+      });
+      setStudentNames(nameMap);
+      setLoading(false);
+    }
+    loadData();
   }, []);
 
-  if (loading) return <div className="py-8 text-center text-stone-500">جاري التحميل...</div>;
+  if (loading) return <LoadingPage message="جاري تجهيز جلسات التسميع..." />;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -71,15 +75,15 @@ export default function RecitationPage() {
               <div className="space-y-2 border-t border-stone-100 pt-3 text-sm text-stone-600">
                 <div className="flex justify-between">
                   <span className="text-stone-400">الجديد:</span>
-                  <span className="font-medium text-stone-800">{session.newMemorization.content || 'غير محدد'}</span>
+                  <span className="font-medium text-stone-800">{session.newMemorization.amount || session.newMemorization.content || 'غير محدد'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-400">المراجعة القريبة:</span>
-                  <span className="font-medium text-stone-800">{session.recentRevision.content || 'غير محدد'}</span>
+                  <span className="font-medium text-stone-800">{session.recentRevision.amount || session.recentRevision.content || 'غير محدد'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-400">المراجعة البعيدة:</span>
-                  <span className="font-medium text-stone-800">{session.distantRevision.content || 'غير محدد'}</span>
+                  <span className="font-medium text-stone-800">{session.distantRevision.amount || session.distantRevision.content || 'غير محدد'}</span>
                 </div>
               </div>
 

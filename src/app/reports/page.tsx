@@ -6,6 +6,7 @@ import { studentService } from '@/lib/services';
 import { PageHeader, ProgressBar } from '@/components/shared';
 import { getCommitmentLabel } from '@/lib/utils/format-utils';
 import { Student } from '@/lib/types/student';
+import { LoadingPage } from '@/components/shared/loading';
 
 interface StudentReportRow {
   student: Student;
@@ -20,22 +21,26 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const students = studentRepository.getAll();
-    const rows = students.map((student) => {
-      const prog = studentService.getPlanProgress(student.id);
-      return {
-        student,
-        totalSessions: prog?.totalSessions || 0,
-        completedSessions: prog?.completedSessions || 0,
-        percentage: prog?.percentage || 0,
-        statusLabel: getCommitmentLabel(prog?.status || 'good'),
-      };
-    });
-    setReportData(rows);
-    setLoading(false);
+    async function loadData() {
+      const students = await studentRepository.getAll();
+      const rows = [];
+      for (const student of students) {
+        const prog = await studentService.getPlanProgress(student.id);
+        rows.push({
+          student,
+          totalSessions: prog?.totalSessions || 0,
+          completedSessions: prog?.completedSessions || 0,
+          percentage: prog?.percentage || 0,
+          statusLabel: getCommitmentLabel(prog?.status || 'good'),
+        });
+      }
+      setReportData(rows);
+      setLoading(false);
+    }
+    loadData();
   }, []);
 
-  if (loading) return <div className="py-8 text-center text-stone-500">جاري التحميل...</div>;
+  if (loading) return <LoadingPage message="جاري تجهيز التقارير..." />;
 
   return (
     <div className="space-y-6 animate-fade-in">

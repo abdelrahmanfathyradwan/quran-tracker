@@ -34,7 +34,7 @@ class PlanRepository extends BaseRepository<Plan> {
     super('plans');
   }
 
-  createPlan(data: PlanFormData): { plan: Plan; sessions: Session[] } {
+  async createPlan(data: PlanFormData): Promise<{ plan: Plan; sessions: Session[] }> {
     const now = new Date().toISOString();
     const recitationDates = getRecitationDates(
       data.startDate,
@@ -76,28 +76,31 @@ class PlanRepository extends BaseRepository<Plan> {
       completed: false,
     }));
 
-    this.create(plan);
-    sessions.forEach((s) => sessionRepository.create(s));
+    await this.create(plan);
+    for (const s of sessions) {
+      await sessionRepository.create(s);
+    }
 
     return { plan, sessions };
   }
 
-  getPlansByStudent(studentId: string): Plan[] {
-    return this.getAll().filter((p) => p.studentId === studentId);
+  async getPlansByStudent(studentId: string): Promise<Plan[]> {
+    const all = await this.getAll();
+    return all.filter((p) => p.studentId === studentId);
   }
 
-  getActivePlan(studentId: string): Plan | undefined {
+  async getActivePlan(studentId: string): Promise<Plan | undefined> {
     const today = new Date().toISOString().split('T')[0];
-    const plans = this.getPlansByStudent(studentId);
+    const plans = await this.getPlansByStudent(studentId);
     return plans.find((p) => p.startDate <= today && p.endDate >= today);
   }
 
-  deletePlanWithSessions(planId: string): void {
+  async deletePlanWithSessions(planId: string): Promise<void> {
     // Delete all sessions for this plan
-    const sessions = sessionRepository.getByPlan(planId);
-    sessionRepository.deleteMany(sessions.map((s) => s.id));
+    const sessions = await sessionRepository.getByPlan(planId);
+    await sessionRepository.deleteMany(sessions.map((s) => s.id));
     // Delete the plan
-    this.delete(planId);
+    await this.delete(planId);
   }
 }
 

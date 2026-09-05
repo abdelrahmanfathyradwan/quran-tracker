@@ -10,11 +10,12 @@ class StudentRepository extends BaseRepository<Student> {
     super('students');
   }
 
-  createStudent(data: StudentFormData): Student {
+  async createStudent(data: StudentFormData): Promise<Student> {
     const now = new Date().toISOString();
     const student: Student = {
       id: generateId(),
       name: data.name,
+      imageUrl: data.imageUrl,
       grade: data.grade,
       startDate: data.startDate,
       currentMemorization: data.currentMemorization,
@@ -27,15 +28,15 @@ class StudentRepository extends BaseRepository<Student> {
     return this.create(student);
   }
 
-  updateStudent(id: string, data: Partial<StudentFormData>): Student | undefined {
+  async updateStudent(id: string, data: Partial<StudentFormData>): Promise<Student | undefined> {
     return this.update(id, {
       ...data,
       updatedAt: new Date().toISOString(),
     });
   }
 
-  search(query: string): Student[] {
-    const students = this.getAll();
+  async search(query: string): Promise<Student[]> {
+    const students = await this.getAll();
     if (!query.trim()) return students;
 
     const normalizedQuery = query.trim().toLowerCase();
@@ -46,8 +47,9 @@ class StudentRepository extends BaseRepository<Student> {
     );
   }
 
-  getActiveStudents(): Student[] {
-    return this.getAll().filter((s) => s.status === 'active');
+  async getActiveStudents(): Promise<Student[]> {
+    const all = await this.getAll();
+    return all.filter((s) => s.status === 'active');
   }
 }
 

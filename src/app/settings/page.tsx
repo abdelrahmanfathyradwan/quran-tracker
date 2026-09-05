@@ -18,22 +18,25 @@ export default function SettingsPage() {
   const [showSeedConfirm, setShowSeedConfirm] = useState(false);
 
   useEffect(() => {
-    const settings = settingsRepository.get();
-    setTeacherName(settings.teacherName);
-    setCenterName(settings.centerName);
+    async function loadSettings() {
+      const settings = await settingsRepository.get();
+      setTeacherName(settings.teacherName);
+      setCenterName(settings.centerName);
+    }
+    loadSettings();
   }, []);
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    settingsRepository.update({
+    await settingsRepository.update({
       teacherName,
       centerName,
     });
     showToast('تم حفظ الإعدادات بنجاح', 'success');
   };
 
-  const handleExport = () => {
-    backupService.downloadBackup();
+  const handleExport = async () => {
+    await backupService.downloadBackup();
     showToast('تم تصدير البيانات بنجاح', 'success');
   };
 
@@ -41,19 +44,19 @@ export default function SettingsPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        const res = backupService.importData(json);
+        const res = await backupService.importData(json);
         if (res.success) {
           showToast('تم استيراد البيانات بنجاح', 'success');
           // Refresh settings page fields
-          const settings = settingsRepository.get();
+          const settings = await settingsRepository.get();
           setTeacherName(settings.teacherName);
           setCenterName(settings.centerName);
         } else {
@@ -68,17 +71,17 @@ export default function SettingsPage() {
     e.target.value = '';
   };
 
-  const handleClearAll = () => {
-    backupService.clearAllData();
+  const handleClearAll = async () => {
+    await backupService.clearAllData();
     setTeacherName('');
     setCenterName('');
     showToast('تم حذف جميع البيانات بنجاح', 'success');
     setShowClearConfirm(false);
   };
 
-  const handleLoadSeeds = () => {
-    loadSeedData();
-    const settings = settingsRepository.get();
+  const handleLoadSeeds = async () => {
+    await loadSeedData();
+    const settings = await settingsRepository.get();
     setTeacherName(settings.teacherName);
     setCenterName(settings.centerName);
     showToast('تم تحميل البيانات التجريبية بنجاح', 'success');

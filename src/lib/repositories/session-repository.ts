@@ -6,34 +6,38 @@ class SessionRepository extends BaseRepository<Session> {
     super('sessions');
   }
 
-  getByPlan(planId: string): Session[] {
-    return this.getAll()
+  async getByPlan(planId: string): Promise<Session[]> {
+    const all = await this.getAll();
+    return all
       .filter((s) => s.planId === planId)
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  getByStudent(studentId: string): Session[] {
-    return this.getAll()
+  async getByStudent(studentId: string): Promise<Session[]> {
+    const all = await this.getAll();
+    return all
       .filter((s) => s.studentId === studentId)
       .sort((a, b) => b.date.localeCompare(a.date)); // newest first
   }
 
-  getByDate(date: string): Session[] {
-    return this.getAll().filter((s) => s.date === date);
+  async getByDate(date: string): Promise<Session[]> {
+    const all = await this.getAll();
+    return all.filter((s) => s.date === date);
   }
 
-  getTodaySessions(): Session[] {
+  async getTodaySessions(): Promise<Session[]> {
     const today = new Date().toISOString().split('T')[0];
     return this.getByDate(today);
   }
 
-  getCompletedByStudent(studentId: string): Session[] {
-    return this.getAll()
+  async getCompletedByStudent(studentId: string): Promise<Session[]> {
+    const all = await this.getAll();
+    return all
       .filter((s) => s.studentId === studentId && s.completed)
       .sort((a, b) => b.date.localeCompare(a.date));
   }
 
-  completeSession(id: string, data: SessionFormData): Session | undefined {
+  async completeSession(id: string, data: SessionFormData): Promise<Session | undefined> {
     return this.update(id, {
       newMemorization: data.newMemorization,
       recentRevision: data.recentRevision,
@@ -41,32 +45,34 @@ class SessionRepository extends BaseRepository<Session> {
       overallRating: data.overallRating,
       notes: data.notes,
       durationSeconds: data.durationSeconds,
+      teacherName: data.teacherName,
       completed: true,
       completedAt: new Date().toISOString(),
     });
   }
 
-  startSession(id: string): Session | undefined {
-    const session = this.getById(id);
+  async startSession(id: string): Promise<Session | undefined> {
+    const session = await this.getById(id);
     if (session && !session.startedAt) {
       return this.update(id, { startedAt: new Date().toISOString() });
     }
     return session;
   }
 
-  updateSessionContent(
+  async updateSessionContent(
     id: string,
     updates: Partial<Pick<Session, 'newMemorization' | 'recentRevision' | 'distantRevision'>>
-  ): Session | undefined {
+  ): Promise<Session | undefined> {
     return this.update(id, updates);
   }
 
-  getStudentSessionsByDateRange(
+  async getStudentSessionsByDateRange(
     studentId: string,
     startDate: string,
     endDate: string
-  ): Session[] {
-    return this.getAll()
+  ): Promise<Session[]> {
+    const all = await this.getAll();
+    return all
       .filter(
         (s) =>
           s.studentId === studentId &&
@@ -76,9 +82,10 @@ class SessionRepository extends BaseRepository<Session> {
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  getMissedSessions(studentId: string): Session[] {
+  async getMissedSessions(studentId: string): Promise<Session[]> {
     const today = new Date().toISOString().split('T')[0];
-    return this.getAll().filter(
+    const all = await this.getAll();
+    return all.filter(
       (s) => s.studentId === studentId && !s.completed && s.date < today
     );
   }

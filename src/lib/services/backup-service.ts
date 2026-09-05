@@ -1,4 +1,4 @@
-import { storageProvider } from '../storage';
+import { apiClient } from '../api-client';
 import { studentRepository } from '../repositories/student-repository';
 import { planRepository } from '../repositories/plan-repository';
 import { sessionRepository } from '../repositories/session-repository';
@@ -9,21 +9,26 @@ class BackupService {
   /**
    * Export all application data as a JSON object.
    */
-  exportData(): AppData {
+  async exportData(): Promise<AppData> {
+    const students = await studentRepository.getAll();
+    const plans = await planRepository.getAll();
+    const sessions = await sessionRepository.getAll();
+    const settings = await settingsRepository.get();
+
     return {
       version: CURRENT_DATA_VERSION,
-      students: studentRepository.getAll(),
-      plans: planRepository.getAll(),
-      sessions: sessionRepository.getAll(),
-      settings: settingsRepository.get(),
+      students,
+      plans,
+      sessions,
+      settings,
     };
   }
 
   /**
    * Export data and trigger a file download.
    */
-  downloadBackup(): void {
-    const data = this.exportData();
+  async downloadBackup(): Promise<void> {
+    const data = await this.exportData();
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -72,18 +77,18 @@ class BackupService {
   /**
    * Import data from a JSON object, replacing all existing data.
    */
-  importData(data: AppData): { success: boolean; error?: string } {
+  async importData(data: AppData): Promise<{ success: boolean; error?: string }> {
     const validation = this.validateImport(data);
     if (!validation.valid) {
       return { success: false, error: validation.error };
     }
 
     try {
-      studentRepository.setAll(data.students);
-      planRepository.setAll(data.plans);
-      sessionRepository.setAll(data.sessions);
+      await studentRepository.setAll(data.students);
+      await planRepository.setAll(data.plans);
+      await sessionRepository.setAll(data.sessions);
       if (data.settings) {
-        settingsRepository.update(data.settings);
+        await settingsRepository.update(data.settings);
       }
       return { success: true };
     } catch (error) {
@@ -95,8 +100,11 @@ class BackupService {
   /**
    * Clear all application data.
    */
-  clearAllData(): void {
-    storageProvider.clear();
+  async clearAllData(): Promise<void> {
+    await apiClient.clear('students');
+    await apiClient.clear('plans');
+    await apiClient.clear('sessions');
+    await apiClient.clear('settings');
   }
 }
 

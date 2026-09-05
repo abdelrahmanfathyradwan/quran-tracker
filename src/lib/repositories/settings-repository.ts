@@ -1,22 +1,23 @@
-import { storageProvider } from '../storage';
+import { apiClient } from '../api-client';
 import { AppSettings, DEFAULT_SETTINGS } from '../types/settings';
 
 class SettingsRepository {
-  private key = 'settings';
+  private collection = 'settings';
 
-  get(): AppSettings {
-    return storageProvider.get<AppSettings>(this.key) || { ...DEFAULT_SETTINGS };
+  async get(): Promise<AppSettings> {
+    const settings = await apiClient.getSettings<AppSettings>();
+    return settings || { ...DEFAULT_SETTINGS };
   }
 
-  update(settings: Partial<AppSettings>): AppSettings {
-    const current = this.get();
+  async update(settings: Partial<AppSettings>): Promise<AppSettings> {
+    const current = await this.get();
     const updated = { ...current, ...settings };
-    storageProvider.set(this.key, updated);
+    await apiClient.setSettings(updated);
     return updated;
   }
 
-  reset(): void {
-    storageProvider.set(this.key, { ...DEFAULT_SETTINGS });
+  async reset(): Promise<void> {
+    await apiClient.setSettings({ ...DEFAULT_SETTINGS });
   }
 }
 
