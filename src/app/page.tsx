@@ -58,11 +58,7 @@ export default function Dashboard() {
     <div className="space-y-8 animate-fade-in">
       {/* Welcome Header */}
       <div className="flex flex-col gap-1">
-      <div className="flex flex-row justify-between">
-         <h1 className="text-2xl font-bold text-green-700">اللهم صلي و سلم و بارك علي سيدنا محمد</h1>
-        
-      </div>
-        <p className="text-stone-500 text-sm">{arabicDate}</p>
+        <h1 className="text-xl font-bold text-green-700">{arabicDate}</h1>
       </div>
 
       {/* Stats Grid */}

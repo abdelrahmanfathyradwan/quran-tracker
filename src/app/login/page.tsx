@@ -9,12 +9,14 @@ interface Teacher {
   name: string;
   username: string;
   password: string;
+  role: 'teacher' | 'admin';
 }
 
 const TEACHERS: Teacher[] = [
-  { id: '1', name: 'عبدالرحمن فتحي', username: 'عبدالرحمن', password: '123456' },
-  { id: '2', name: 'ش/أحمد حمادة', username: 'أحمد', password: '12345' },
-  { id: '3', name: 'ش/بلال سليمان', username: 'بلال', password: '1234' },
+  { id: '1', name: 'عبدالرحمن فتحي', username: 'عبدالرحمن', password: '123456', role: 'teacher' },
+  { id: '2', name: 'ش/أحمد حمادة', username: 'أحمد', password: '12345', role: 'teacher' },
+  { id: '3', name: 'ش/بلال سليمان', username: 'بلال', password: '1234', role: 'teacher' },
+  { id: 'admin', name: 'د/محمد عبدالرحيم', username: 'admin', password: 'admin123', role: 'admin' },
 ];
 
 export default function LoginPage() {
@@ -31,7 +33,7 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -39,7 +41,26 @@ export default function LoginPage() {
 
     if (teacher) {
       localStorage.setItem('teacher', JSON.stringify(teacher));
-      router.push('/');
+      
+      // Check in attendance (only for teachers, not admins)
+      if (teacher.role === 'teacher') {
+        try {
+          const { attendanceRepository } = await import('@/lib/repositories/attendance-repository');
+          await attendanceRepository.checkIn(teacher.id, teacher.name);
+        } catch (error) {
+          console.error('Failed to check in attendance:', error);
+        }
+      }
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new Event('teacher-login'));
+      
+      // Redirect based on role
+      if (teacher.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/');
+      }
     } else {
       setError('اسم المستخدم أو كلمة المرور غير صحيحة');
     }
@@ -50,7 +71,7 @@ export default function LoginPage() {
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-8">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-stone-900 mb-2">تسجيل الدخول</h1>
-          <p className="text-stone-500 text-sm">نظام متابعة الحفظ القرآني</p>
+          <p className="text-stone-500 text-sm">مركز مدارج</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -98,11 +119,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-stone-100">
-          <p className="text-xs text-stone-400 text-center">
-            المشايخ المسجلين: عبدالرحمن فتحي، أحمد حمادة، بلال سليمان
-          </p>
-        </div>
       </div>
     </div>
   );

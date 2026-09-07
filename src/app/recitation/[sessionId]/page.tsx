@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Check, Plus, Minus, ArrowLeft, Timer, Loader2, Star, ThumbsUp, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowRight, Check, Plus, Minus, ArrowLeft, Timer, Loader2, Star, ThumbsUp, CheckCircle, AlertCircle, Sun, Moon } from 'lucide-react';
 import { sessionRepository } from '@/lib/repositories/session-repository';
 import { studentRepository } from '@/lib/repositories/student-repository';
 import { formatArabicDateWithDay } from '@/lib/utils/date-utils';
@@ -44,6 +44,7 @@ export default function RecitationSessionPage() {
   const [rating, setRating] = useState<SessionRating>('very_good');
   const [sessionNotes, setSessionNotes] = useState('');
   const [showSessionNotes, setShowSessionNotes] = useState(false);
+  const [prayedFajr, setPrayedFajr] = useState(false);
 
   // Timer state
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -190,6 +191,10 @@ export default function RecitationSessionPage() {
 
   const handleSave = async () => {
     setIsSubmitting(true);
+
+    // Update student's prayedFajr status
+    await studentRepository.update(session.studentId, { prayedFajr });
+
     await sessionRepository.completeSession(sessionId, {
       newMemorization: {
         content: session.newMemorization.content,
@@ -286,33 +291,52 @@ export default function RecitationSessionPage() {
                   <div className="text-xs text-stone-400">{session.newMemorization.content || 'غير محدد'}</div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-1 justify-center">
-                    {(Object.keys(STATUS_LABELS) as RecitationStatus[]).map((st) => (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={() => setNewStatus(st)}
-                        className={`px-2 py-1 text-xs font-semibold rounded transition-all ${
-                          newStatus === st
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                        }`}
-                      >
-                        {STATUS_LABELS[st]}
-                      </button>
-                    ))}
-                  </div>
+                  {session.completed ? (
+                    <div className="text-center">
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        newStatus === 'excellent' ? 'bg-emerald-100 text-emerald-700' :
+                        newStatus === 'very_good' ? 'bg-blue-100 text-blue-700' :
+                        newStatus === 'good' ? 'bg-amber-100 text-amber-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {STATUS_LABELS[newStatus]}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex gap-1 justify-center">
+                      {(Object.keys(STATUS_LABELS) as RecitationStatus[]).map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => setNewStatus(st)}
+                          className={`px-2 py-1 text-xs font-semibold rounded transition-all ${
+                            newStatus === st
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                          }`}
+                        >
+                          {STATUS_LABELS[st]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-2">
-                    <button onClick={() => setNewMistakes(Math.max(0, newMistakes - 1))} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="w-6 text-center font-bold text-stone-800">{newMistakes}</span>
-                    <button onClick={() => setNewMistakes(newMistakes + 1)} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
+                  {session.completed ? (
+                    <div className="text-center">
+                      <span className="text-lg font-bold text-stone-800">{newMistakes}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => setNewMistakes(Math.max(0, newMistakes - 1))} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="w-6 text-center font-bold text-stone-800">{newMistakes}</span>
+                      <button onClick={() => setNewMistakes(newMistakes + 1)} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
               <tr className="border-t border-stone-200">
@@ -321,33 +345,52 @@ export default function RecitationSessionPage() {
                   <div className="text-xs text-stone-400">{session.recentRevision.content || 'غير محدد'}</div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-1 justify-center">
-                    {(Object.keys(STATUS_LABELS) as RecitationStatus[]).map((st) => (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={() => setRecentStatus(st)}
-                        className={`px-2 py-1 text-xs font-semibold rounded transition-all ${
-                          recentStatus === st
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                        }`}
-                      >
-                        {STATUS_LABELS[st]}
-                      </button>
-                    ))}
-                  </div>
+                  {session.completed ? (
+                    <div className="text-center">
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        recentStatus === 'excellent' ? 'bg-emerald-100 text-emerald-700' :
+                        recentStatus === 'very_good' ? 'bg-blue-100 text-blue-700' :
+                        recentStatus === 'good' ? 'bg-amber-100 text-amber-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {STATUS_LABELS[recentStatus]}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex gap-1 justify-center">
+                      {(Object.keys(STATUS_LABELS) as RecitationStatus[]).map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => setRecentStatus(st)}
+                          className={`px-2 py-1 text-xs font-semibold rounded transition-all ${
+                            recentStatus === st
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                          }`}
+                        >
+                          {STATUS_LABELS[st]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-2">
-                    <button onClick={() => setRecentMistakes(Math.max(0, recentMistakes - 1))} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="w-6 text-center font-bold text-stone-800">{recentMistakes}</span>
-                    <button onClick={() => setRecentMistakes(recentMistakes + 1)} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
+                  {session.completed ? (
+                    <div className="text-center">
+                      <span className="text-lg font-bold text-stone-800">{recentMistakes}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => setRecentMistakes(Math.max(0, recentMistakes - 1))} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="w-6 text-center font-bold text-stone-800">{recentMistakes}</span>
+                      <button onClick={() => setRecentMistakes(recentMistakes + 1)} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
               <tr className="border-t border-stone-200">
@@ -356,97 +399,173 @@ export default function RecitationSessionPage() {
                   <div className="text-xs text-stone-400">{session.distantRevision.content || 'غير محدد'}</div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-1 justify-center">
-                    {(Object.keys(STATUS_LABELS) as RecitationStatus[]).map((st) => (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={() => setDistantStatus(st)}
-                        className={`px-2 py-1 text-xs font-semibold rounded transition-all ${
-                          distantStatus === st
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                        }`}
-                      >
-                        {STATUS_LABELS[st]}
-                      </button>
-                    ))}
-                  </div>
+                  {session.completed ? (
+                    <div className="text-center">
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        distantStatus === 'excellent' ? 'bg-emerald-100 text-emerald-700' :
+                        distantStatus === 'very_good' ? 'bg-blue-100 text-blue-700' :
+                        distantStatus === 'good' ? 'bg-amber-100 text-amber-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {STATUS_LABELS[distantStatus]}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex gap-1 justify-center">
+                      {(Object.keys(STATUS_LABELS) as RecitationStatus[]).map((st) => (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => setDistantStatus(st)}
+                          className={`px-2 py-1 text-xs font-semibold rounded transition-all ${
+                            distantStatus === st
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                          }`}
+                        >
+                          {STATUS_LABELS[st]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-2">
-                    <button onClick={() => setDistantMistakes(Math.max(0, distantMistakes - 1))} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="w-6 text-center font-bold text-stone-800">{distantMistakes}</span>
-                    <button onClick={() => setDistantMistakes(distantMistakes + 1)} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
+                  {session.completed ? (
+                    <div className="text-center">
+                      <span className="text-lg font-bold text-stone-800">{distantMistakes}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => setDistantMistakes(Math.max(0, distantMistakes - 1))} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="w-6 text-center font-bold text-stone-800">{distantMistakes}</span>
+                      <button onClick={() => setDistantMistakes(distantMistakes + 1)} className="w-7 h-7 flex items-center justify-center bg-stone-100 rounded hover:bg-stone-200 text-stone-600">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        {/* Overall Rating & Save */}
-        <div className="bg-gradient-to-r from-stone-50 to-white rounded-xl p-5 border border-stone-200">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-stone-700 mb-3">التقييم العام</label>
-              <div className="grid grid-cols-2 gap-2">
-                {(Object.keys(RATING_LABELS) as SessionRating[]).map((r) => {
-                  const getIcon = () => {
-                    switch (r) {
-                      case 'excellent':
-                        return <Star className="w-4 h-4" />;
-                      case 'very_good':
-                        return <ThumbsUp className="w-4 h-4" />;
-                      case 'good':
-                        return <CheckCircle className="w-4 h-4" />;
-                      case 'needs_attention':
-                        return <AlertCircle className="w-4 h-4" />;
-                    }
-                  };
-                  const getBgColor = () => {
-                    switch (r) {
-                      case 'excellent':
-                        return rating === r ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100';
-                      case 'very_good':
-                        return rating === r ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100';
-                      case 'good':
-                        return rating === r ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100';
-                      case 'needs_attention':
-                        return rating === r ? 'bg-red-500 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100';
-                    }
-                  };
-                  return (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setRating(r)}
-                      className={`flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-xl transition-all ${getBgColor()}`}
-                    >
-                      {getIcon()}
-                      {RATING_LABELS[r]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="sm:w-48">
-              <label className="block text-sm font-semibold text-stone-700 mb-3">&nbsp;</label>
+        {/* Fajr Prayer */}
+        {!session.completed && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-5 border border-amber-200 mb-6">
+            <label className="block text-sm font-semibold text-stone-700 mb-3">صلاة الفجر</label>
+            <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={handleSave}
-                disabled={isSubmitting}
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 text-white rounded-xl text-sm font-semibold transition-all shadow-md flex items-center justify-center gap-2"
+                type="button"
+                onClick={() => setPrayedFajr(true)}
+                className={`flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold rounded-xl transition-all ${
+                  prayedFajr
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-white text-stone-600 border border-stone-200 hover:bg-emerald-50'
+                }`}
               >
-                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isSubmitting ? 'جاري الحفظ...' : (nextSessionId ? 'حفظ والتالي' : 'حفظ')}
+                <Sun className="w-5 h-5" />
+                صلى الفجر (+10 نقاط)
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrayedFajr(false)}
+                className={`flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold rounded-xl transition-all ${
+                  !prayedFajr
+                    ? 'bg-stone-600 text-white shadow-md'
+                    : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+                }`}
+              >
+                <Moon className="w-5 h-5" />
+                لم يصل
               </button>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Overall Rating & Save */}
+        {!session.completed ? (
+          <div className="bg-gradient-to-r from-stone-50 to-white rounded-xl p-5 border border-stone-200">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-stone-700 mb-3">التقييم العام</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(RATING_LABELS) as SessionRating[]).map((r) => {
+                    const getIcon = () => {
+                      switch (r) {
+                        case 'excellent':
+                          return <Star className="w-4 h-4" />;
+                        case 'very_good':
+                          return <ThumbsUp className="w-4 h-4" />;
+                        case 'good':
+                          return <CheckCircle className="w-4 h-4" />;
+                        case 'needs_attention':
+                          return <AlertCircle className="w-4 h-4" />;
+                      }
+                    };
+                    const getBgColor = () => {
+                      switch (r) {
+                        case 'excellent':
+                          return rating === r ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100';
+                        case 'very_good':
+                          return rating === r ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100';
+                        case 'good':
+                          return rating === r ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-700 hover:bg-amber-100';
+                        case 'needs_attention':
+                          return rating === r ? 'bg-red-500 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100';
+                      }
+                    };
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRating(r)}
+                        className={`flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-xl transition-all ${getBgColor()}`}
+                      >
+                        {getIcon()}
+                        {RATING_LABELS[r]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="sm:w-48">
+                <label className="block text-sm font-semibold text-stone-700 mb-3">&nbsp;</label>
+                <button
+                  onClick={handleSave}
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-300 disabled:text-stone-500 text-white rounded-xl text-sm font-semibold transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSubmitting ? 'جاري الحفظ...' : (nextSessionId ? 'حفظ والتالي' : 'حفظ')}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-r from-stone-50 to-white rounded-xl p-5 border border-stone-200">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-stone-700 mb-3">التقييم العام</label>
+                <span className={`px-4 py-2 text-sm font-semibold rounded-full inline-block ${
+                  rating === 'excellent' ? 'bg-emerald-100 text-emerald-700' :
+                  rating === 'very_good' ? 'bg-blue-100 text-blue-700' :
+                  rating === 'good' ? 'bg-amber-100 text-amber-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {RATING_LABELS[rating]}
+                </span>
+              </div>
+              <div className="sm:w-48">
+                <label className="block text-sm font-semibold text-stone-700 mb-3">&nbsp;</label>
+                <div className="text-center text-sm text-stone-500">
+                  تم إكمال الجلسة
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

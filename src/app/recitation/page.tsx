@@ -9,6 +9,7 @@ import { PageHeader, EmptyState } from '@/components/shared';
 import { formatArabicDateWithDay } from '@/lib/utils/date-utils';
 import { Session } from '@/lib/types/session';
 import { LoadingPage } from '@/components/shared/loading';
+import { STATUS_LABELS } from '@/lib/types/session';
 
 export default function RecitationPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -75,15 +76,30 @@ export default function RecitationPage() {
               <div className="space-y-2 border-t border-stone-100 pt-3 text-sm text-stone-600">
                 <div className="flex justify-between">
                   <span className="text-stone-400">الجديد:</span>
-                  <span className="font-medium text-stone-800">{session.newMemorization.amount || session.newMemorization.content || 'غير محدد'}</span>
+                  <span className="font-medium text-stone-800">
+                    {session.completed
+                      ? STATUS_LABELS[session.newMemorization.status]
+                      : (session.newMemorization.amount || session.newMemorization.content || 'غير محدد')
+                    }
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-400">المراجعة القريبة:</span>
-                  <span className="font-medium text-stone-800">{session.recentRevision.amount || session.recentRevision.content || 'غير محدد'}</span>
+                  <span className="font-medium text-stone-800">
+                    {session.completed
+                      ? STATUS_LABELS[session.recentRevision.status]
+                      : (session.recentRevision.amount || session.recentRevision.content || 'غير محدد')
+                    }
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-400">المراجعة البعيدة:</span>
-                  <span className="font-medium text-stone-800">{session.distantRevision.amount || session.distantRevision.content || 'غير محدد'}</span>
+                  <span className="font-medium text-stone-800">
+                    {session.completed
+                      ? STATUS_LABELS[session.distantRevision.status]
+                      : (session.distantRevision.amount || session.distantRevision.content || 'غير محدد')
+                    }
+                  </span>
                 </div>
               </div>
 

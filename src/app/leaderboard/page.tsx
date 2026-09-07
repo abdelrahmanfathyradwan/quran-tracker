@@ -23,8 +23,11 @@ import { Session } from '@/lib/types/session';
 import { calculateStudentScore, rankStudents, StudentScore } from '@/lib/scoring';
 
 // ─── Component ───────────────────────────────────────────────────
+type PeriodType = 'day' | 'week' | 'month';
+
 export default function LeaderboardPage() {
   const [selectedDate, setSelectedDate] = useState(getTodayString());
+  const [periodType, setPeriodType] = useState<PeriodType>('day');
   const [rankedStudents, setRankedStudents] = useState<(StudentScore & { rank: number })[] | null>(null);
 
   useEffect(() => {
@@ -35,22 +38,68 @@ export default function LeaderboardPage() {
         studentMap[s.id] = s;
       });
 
-      const sessions = await sessionRepository.getByDate(selectedDate);
+      let sessions: Session[] = [];
+      
+      if (periodType === 'day') {
+        sessions = await sessionRepository.getByDate(selectedDate);
+      } else if (periodType === 'week') {
+        // Get sessions for the week (7 days)
+        const date = new Date(selectedDate);
+        const startDate = new Date(date);
+        startDate.setDate(date.getDate() - 6); // Start from 6 days ago
+        
+        for (let i = 0; i < 7; i++) {
+          const currentDate = new Date(startDate);
+          currentDate.setDate(startDate.getDate() + i);
+          const dateStr = currentDate.toISOString().split('T')[0];
+          const daySessions = await sessionRepository.getByDate(dateStr);
+          sessions = [...sessions, ...daySessions];
+        }
+      } else if (periodType === 'month') {
+        // Get sessions for the month
+        const date = new Date(selectedDate);
+        const startDate = new Date(date.getFullYear(), date.getMonth(), 1);
+        const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        
+        for (let i = 0; i <= endDate.getDate(); i++) {
+          const currentDate = new Date(startDate);
+          currentDate.setDate(startDate.getDate() + i);
+          const dateStr = currentDate.toISOString().split('T')[0];
+          const daySessions = await sessionRepository.getByDate(dateStr);
+          sessions = [...sessions, ...daySessions];
+        }
+      }
+
       const completedSessions = sessions.filter((s) => s.completed);
 
-      // Calculate scores for each student
-      const scores = completedSessions.map((session) => {
+      // Calculate scores for each student (aggregate by student)
+      const studentScores: Record<string, StudentScore> = {};
+      
+      completedSessions.forEach((session) => {
         const student = studentMap[session.studentId];
-        if (!student) return null;
-        return calculateStudentScore(session, student);
-      }).filter(Boolean) as StudentScore[];
+        if (!student) return;
+        
+        const score = calculateStudentScore(session, student);
+        
+        if (!studentScores[session.studentId]) {
+          studentScores[session.studentId] = {
+            ...score,
+            totalScore: 0,
+            totalMistakes: 0,
+          };
+        }
+        
+        studentScores[session.studentId].totalScore += score.totalScore;
+        studentScores[session.studentId].totalMistakes += score.totalMistakes;
+      });
 
-      // Rank students
-      const ranked = rankStudents(scores);
+      // Convert to array and rank
+      const scoresArray = Object.values(studentScores);
+      const ranked = rankStudents(scoresArray);
       setRankedStudents(ranked);
     }
     loadData();
-  }, [selectedDate]);
+  }, [selectedDate, periodType]);
 
   const navigateDate = (direction: number) => {
     const date = new Date(selectedDate);
@@ -73,10 +122,30 @@ export default function LeaderboardPage() {
             فارس الحلقة
           </h1>
           <p className="text-stone-500 text-sm mt-1">
-            سجل التفوق والمنافسة اليومية للطلاب
+            سجل التفوق والمنافسة للطلاب
           </p>
         </div>
 
+        {/* Period Type Selector */}
+        <div className="flex items-center gap-2">
+          {(['day', 'week', 'month'] as PeriodType[]).map((type) => (
+            <button
+              key={type}
+              onClick={() => setPeriodType(type)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                periodType === type
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+              }`}
+            >
+              {type === 'day' ? 'يومي' : type === 'week' ? 'أسبوعي' : 'شهري'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Date Picker */}
+      <div className="flex justify-center mb-8">
         <div className="flex items-center bg-white rounded-full border border-stone-200 shadow-sm overflow-hidden p-1">
           <button
             onClick={() => navigateDate(1)}
@@ -127,31 +196,109 @@ export default function LeaderboardPage() {
               {/* Main Card */}
               <div className="relative overflow-hidden rounded-[2.5rem] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.5)]">
                 
-                {/* Background Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-600 via-orange-600 to-red-700" />
-                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-amber-500/10 to-orange-600/20" />
+                {/* Background Gradient - Different for each period */}
+                {periodType === 'day' && (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-600 via-orange-600 to-red-700" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-amber-500/10 to-orange-600/20" />
+                  </>
+                )}
+                {periodType === 'week' && (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-700" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-400/20 via-indigo-500/10 to-blue-600/20" />
+                  </>
+                )}
+                {periodType === 'month' && (
+                  <>
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/20 via-teal-500/10 to-cyan-600/20" />
+                  </>
+                )}
                 
-                {/* Spotlights */}
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-yellow-300/30 rounded-full blur-[100px] animate-pulse" />
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-400/30 rounded-full blur-[100px] animate-pulse" style={{animationDelay: '1s'}} />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-300/20 rounded-full blur-[120px] animate-pulse" style={{animationDelay: '0.5s'}} />
+                {/* Spotlights - Different colors for each period */}
+                {periodType === 'day' && (
+                  <>
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-yellow-300/30 rounded-full blur-[100px] animate-pulse" />
+                    <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-400/30 rounded-full blur-[100px] animate-pulse" style={{animationDelay: '1s'}} />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-300/20 rounded-full blur-[120px] animate-pulse" style={{animationDelay: '0.5s'}} />
+                  </>
+                )}
+                {periodType === 'week' && (
+                  <>
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-300/30 rounded-full blur-[100px] animate-pulse" />
+                    <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-400/30 rounded-full blur-[100px] animate-pulse" style={{animationDelay: '1s'}} />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-violet-300/20 rounded-full blur-[120px] animate-pulse" style={{animationDelay: '0.5s'}} />
+                  </>
+                )}
+                {periodType === 'month' && (
+                  <>
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-300/30 rounded-full blur-[100px] animate-pulse" />
+                    <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-400/30 rounded-full blur-[100px] animate-pulse" style={{animationDelay: '1s'}} />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-green-300/20 rounded-full blur-[120px] animate-pulse" style={{animationDelay: '0.5s'}} />
+                  </>
+                )}
                 
-                {/* Radial Spotlight from Center */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-yellow-200/30 via-transparent to-transparent rounded-full" />
+                {/* Radial Spotlight from Center - Different colors */}
+                {periodType === 'day' && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-yellow-200/30 via-transparent to-transparent rounded-full" />
+                )}
+                {periodType === 'week' && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-purple-200/30 via-transparent to-transparent rounded-full" />
+                )}
+                {periodType === 'month' && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-emerald-200/30 via-transparent to-transparent rounded-full" />
+                )}
                 
-                {/* Floating Stars */}
-                <div className="absolute top-12 left-20 animate-bounce" style={{animationDuration: '3s'}}>
-                  <Star className="w-8 h-8 text-yellow-200 drop-shadow-[0_0_20px_rgba(253,224,71,0.9)]" />
-                </div>
-                <div className="absolute top-24 right-24 animate-bounce" style={{animationDuration: '2.5s', animationDelay: '0.5s'}}>
-                  <Star className="w-6 h-6 text-yellow-100 drop-shadow-[0_0_15px_rgba(253,224,71,0.8)]" />
-                </div>
-                <div className="absolute bottom-20 left-32 animate-bounce" style={{animationDuration: '3.5s', animationDelay: '1s'}}>
-                  <Star className="w-7 h-7 text-amber-200 drop-shadow-[0_0_18px_rgba(253,224,71,0.85)]" />
-                </div>
-                <div className="absolute bottom-32 right-16 animate-bounce" style={{animationDuration: '2.8s', animationDelay: '1.5s'}}>
-                  <Star className="w-5 h-5 text-yellow-100 drop-shadow-[0_0_12px_rgba(253,224,71,0.75)]" />
-                </div>
+                {/* Floating Stars - Different colors for each period */}
+                {periodType === 'day' && (
+                  <>
+                    <div className="absolute top-12 left-20 animate-bounce" style={{animationDuration: '3s'}}>
+                      <Star className="w-8 h-8 text-yellow-200 drop-shadow-[0_0_20px_rgba(253,224,71,0.9)]" />
+                    </div>
+                    <div className="absolute top-24 right-24 animate-bounce" style={{animationDuration: '2.5s', animationDelay: '0.5s'}}>
+                      <Star className="w-6 h-6 text-yellow-100 drop-shadow-[0_0_15px_rgba(253,224,71,0.8)]" />
+                    </div>
+                    <div className="absolute bottom-20 left-32 animate-bounce" style={{animationDuration: '3.5s', animationDelay: '1s'}}>
+                      <Star className="w-7 h-7 text-amber-200 drop-shadow-[0_0_18px_rgba(253,224,71,0.85)]" />
+                    </div>
+                    <div className="absolute bottom-32 right-16 animate-bounce" style={{animationDuration: '2.8s', animationDelay: '1.5s'}}>
+                      <Star className="w-5 h-5 text-yellow-100 drop-shadow-[0_0_12px_rgba(253,224,71,0.75)]" />
+                    </div>
+                  </>
+                )}
+                {periodType === 'week' && (
+                  <>
+                    <div className="absolute top-12 left-20 animate-bounce" style={{animationDuration: '3s'}}>
+                      <Star className="w-8 h-8 text-purple-200 drop-shadow-[0_0_20px_rgba(168,85,247,0.9)]" />
+                    </div>
+                    <div className="absolute top-24 right-24 animate-bounce" style={{animationDuration: '2.5s', animationDelay: '0.5s'}}>
+                      <Star className="w-6 h-6 text-purple-100 drop-shadow-[0_0_15px_rgba(168,85,247,0.8)]" />
+                    </div>
+                    <div className="absolute bottom-20 left-32 animate-bounce" style={{animationDuration: '3.5s', animationDelay: '1s'}}>
+                      <Star className="w-7 h-7 text-violet-200 drop-shadow-[0_0_18px_rgba(139,92,246,0.85)]" />
+                    </div>
+                    <div className="absolute bottom-32 right-16 animate-bounce" style={{animationDuration: '2.8s', animationDelay: '1.5s'}}>
+                      <Star className="w-5 h-5 text-purple-100 drop-shadow-[0_0_12px_rgba(168,85,247,0.75)]" />
+                    </div>
+                  </>
+                )}
+                {periodType === 'month' && (
+                  <>
+                    <div className="absolute top-12 left-20 animate-bounce" style={{animationDuration: '3s'}}>
+                      <Star className="w-8 h-8 text-emerald-200 drop-shadow-[0_0_20px_rgba(52,211,153,0.9)]" />
+                    </div>
+                    <div className="absolute top-24 right-24 animate-bounce" style={{animationDuration: '2.5s', animationDelay: '0.5s'}}>
+                      <Star className="w-6 h-6 text-emerald-100 drop-shadow-[0_0_15px_rgba(52,211,153,0.8)]" />
+                    </div>
+                    <div className="absolute bottom-20 left-32 animate-bounce" style={{animationDuration: '3.5s', animationDelay: '1s'}}>
+                      <Star className="w-7 h-7 text-teal-200 drop-shadow-[0_0_18px_rgba(45,212,191,0.85)]" />
+                    </div>
+                    <div className="absolute bottom-32 right-16 animate-bounce" style={{animationDuration: '2.8s', animationDelay: '1.5s'}}>
+                      <Star className="w-5 h-5 text-emerald-100 drop-shadow-[0_0_12px_rgba(52,211,153,0.75)]" />
+                    </div>
+                  </>
+                )}
                 
                 {/* Content */}
                 <div className="relative z-10 py-16 px-8">
@@ -159,9 +306,9 @@ export default function LeaderboardPage() {
                   {/* Crown Badge */}
                   <div className="flex justify-center mb-8">
                     <div className="inline-flex items-center gap-3 bg-white/25 backdrop-blur-md px-6 py-3 rounded-full border-2 border-white/40 shadow-2xl">
-                      <Crown className="w-6 h-6 text-yellow-200 animate-bounce" style={{animationDuration: '2s'}} />
+                      <Crown className={`w-6 h-6 animate-bounce ${periodType === 'day' ? 'text-yellow-200' : periodType === 'week' ? 'text-purple-200' : 'text-emerald-200'}`} style={{animationDuration: '2s'}} />
                       <span className="text-white font-bold text-lg tracking-wider">
-                        فارس الحلقة اليوم
+                        {periodType === 'day' ? 'فارس الحلقة اليوم' : periodType === 'week' ? 'فارس الأسبوع' : 'فارس الشهر'}
                       </span>
                     </div>
                   </div>
@@ -169,8 +316,16 @@ export default function LeaderboardPage() {
                   {/* Student Image - Centered & Large */}
                   <div className="flex justify-center mb-8">
                     <div className="relative">
-                      {/* Glow Effect */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/50 to-amber-500/50 blur-3xl rounded-full animate-pulse" />
+                      {/* Glow Effect - Different colors */}
+                      {periodType === 'day' && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/50 to-amber-500/50 blur-3xl rounded-full animate-pulse" />
+                      )}
+                      {periodType === 'week' && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-400/50 to-indigo-500/50 blur-3xl rounded-full animate-pulse" />
+                      )}
+                      {periodType === 'month' && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/50 to-teal-500/50 blur-3xl rounded-full animate-pulse" />
+                      )}
                       
                       {/* Image Container */}
                       <div className="relative w-48 h-48 md:w-56 md:h-56 rounded-full overflow-hidden border-6 border-white/50 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.5)] bg-white/10 backdrop-blur-sm">
@@ -181,17 +336,17 @@ export default function LeaderboardPage() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-yellow-200 to-amber-400">
-                            <span className="text-6xl md:text-7xl font-bold text-amber-900">
+                          <div className={`w-full h-full flex items-center justify-center ${periodType === 'day' ? 'bg-gradient-to-br from-yellow-200 to-amber-400' : periodType === 'week' ? 'bg-gradient-to-br from-purple-200 to-indigo-400' : 'bg-gradient-to-br from-emerald-200 to-teal-400'}`}>
+                            <span className={`text-6xl md:text-7xl font-bold ${periodType === 'day' ? 'text-amber-900' : periodType === 'week' ? 'text-indigo-900' : 'text-teal-900'}`}>
                               {knight.studentName.charAt(0)}
                             </span>
                           </div>
                         )}
                       </div>
                       
-                      {/* Floating Crown */}
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(253,224,71,0.9)] border-4 border-white animate-bounce">
-                        <Crown className="w-8 h-8 text-amber-900" />
+                      {/* Floating Crown - Different colors */}
+                      <div className={`absolute -top-6 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(253,224,71,0.9)] border-4 border-white animate-bounce ${periodType === 'day' ? 'bg-gradient-to-br from-yellow-400 to-amber-500' : periodType === 'week' ? 'bg-gradient-to-br from-purple-400 to-indigo-500' : 'bg-gradient-to-br from-emerald-400 to-teal-500'}`}>
+                        <Crown className={`w-8 h-8 ${periodType === 'day' ? 'text-amber-900' : periodType === 'week' ? 'text-indigo-900' : 'text-teal-900'}`} />
                       </div>
                     </div>
                   </div>
@@ -211,7 +366,7 @@ export default function LeaderboardPage() {
                     {/* Score Card */}
                     <div className="bg-white/25 backdrop-blur-md px-8 py-4 rounded-2xl border-2 border-white/40 shadow-2xl min-w-[140px]">
                       <div className="flex flex-col items-center">
-                        <Sparkles className="w-8 h-8 text-yellow-200 mb-2" />
+                        <Sparkles className={`w-8 h-8 mb-2 ${periodType === 'day' ? 'text-yellow-200' : periodType === 'week' ? 'text-purple-200' : 'text-emerald-200'}`} />
                         <span className="text-white/80 text-sm mb-1">النقاط</span>
                         <span className="text-4xl font-black text-white">{knight.totalScore}</span>
                       </div>

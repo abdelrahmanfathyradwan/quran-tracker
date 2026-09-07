@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +14,11 @@ import {
   BookOpenCheck,
   History,
   Trophy,
+  Zap,
+  Clock,
+  UserCheck,
+  RefreshCw,
+  CreditCard,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,20 +26,48 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const navItems = [
+const teacherNavItems = [
   { href: '/', label: 'لوحة التحكم', icon: LayoutDashboard },
   { href: '/students', label: 'الطلاب', icon: Users },
+  { href: '/subscriptions', label: 'سداد الاشتراكات', icon: CreditCard },
+  { href: '/handover-history', label: 'سجل التسليمات', icon: History },
   { href: '/plans', label: 'الخطط', icon: CalendarDays },
   { href: '/recitation', label: 'التسميع', icon: BookOpen },
   { href: '/reports', label: 'التقارير', icon: BarChart3 },
   { href: '/history', label: 'السجل', icon: History },
   { href: '/leaderboard', label: 'فارس اليوم', icon: Trophy },
+  { href: '/competition', label: 'ماراثون التنافس', icon: Zap },
   { href: '/settings', label: 'الإعدادات', icon: Settings },
+];
+
+const adminNavItems = [
+  { href: '/admin', label: 'لوحة المدير', icon: LayoutDashboard },
+  { href: '/students', label: 'الطلاب', icon: Users },
+  { href: '/admin/teachers', label: 'المعلمين', icon: UserCheck },
+  { href: '/admin/schedule', label: 'الجدول', icon: Clock },
 ];
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const salawatCount = useSalawatCount();
+  
+  // Get user role from localStorage
+  const [navItems, setNavItems] = useState(teacherNavItems);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  useEffect(() => {
+    const teacherData = localStorage.getItem('teacher');
+    if (teacherData) {
+      const teacher = JSON.parse(teacherData);
+      if (teacher.role === 'admin') {
+        setNavItems(adminNavItems);
+        setIsAdmin(true);
+      } else {
+        setNavItems(teacherNavItems);
+        setIsAdmin(false);
+      }
+    }
+  }, []);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -51,11 +85,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     >
       {/* Logo area */}
       <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100">
-        <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
+        <Link href={isAdmin ? '/admin' : '/'} className="flex items-center gap-2.5" onClick={onClose}>
           <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
             <BookOpenCheck className="w-4.5 h-4.5 text-white" />
           </div>
-          <span className="font-semibold text-gray-900 text-[15px]">متابعة الحفظ</span>
+          <span className="font-semibold text-gray-900 text-[15px]">
+            {isAdmin ? 'نظرة عامة على المركز' : 'متابعة الحفظ'}
+          </span>
         </Link>
         <button
           onClick={onClose}
@@ -141,8 +177,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 }
 
 // Simple state listener hook for local storage events to keep the UI in sync
-import { RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 function useSalawatCount() {
   const [count, setCount] = useState('0');

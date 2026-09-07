@@ -265,26 +265,26 @@ function PlansContent() {
                   <p className="text-xs text-amber-600 mt-2">يرجى تحديد 3 أيام أسبوعية لتوزيع جدول التسميع.</p>
                 )}
               </div>
-            </form>
 
-            {/* Footer */}
-            <div className="px-6 py-4 bg-stone-50 border-t border-stone-100 flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setShowAddPlan(false)}
-                className="px-5 py-2.5 text-sm font-semibold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-100 transition-all shadow-sm"
-              >
-                إلغاء
-              </button>
-              <button
-                type="submit"
-                disabled={selectedDays.length !== 3 || isSubmitting}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-xl text-sm font-semibold transition-all shadow-md"
-              >
-                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isSubmitting ? 'جاري الحفظ...' : 'حفظ الخطة'}
-              </button>
-            </div>
+              {/* Footer */}
+              <div className="flex gap-3 justify-end pt-4 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPlan(false)}
+                  className="px-5 py-2.5 text-sm font-semibold text-stone-700 bg-white border border-stone-200 rounded-xl hover:bg-stone-100 transition-all shadow-sm"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={selectedDays.length !== 3 || isSubmitting}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-xl text-sm font-semibold transition-all shadow-md"
+                >
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSubmitting ? 'جاري الحفظ...' : 'حفظ الخطة'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
